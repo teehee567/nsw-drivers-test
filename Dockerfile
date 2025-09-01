@@ -1,4 +1,4 @@
-FROM rustlang/rust:nightly-bookworm as builder
+FROM rustlang/rust:nightly-bookworm@sha256:b89d3995935b220fddcb8d8496224c722a83140e6a2f88e61c371378f63fb08d as builder
 
 # Install cargo-leptos
 RUN cargo install --locked cargo-leptos

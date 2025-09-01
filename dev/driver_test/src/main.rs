@@ -391,7 +391,7 @@ async fn main() {
     settings.username = username.unwrap();
     settings.password = password.unwrap();
     
-    let locations = vec!["Queanbeyan", "Yass", "Finley", "Hornsby", "Armidale", "Auburn", "Ballina"];
+    let locations = vec!["141", "Yass", "Finley", "Hornsby", "Armidale", "Auburn", "Ballina"];
     let locations = locations.into_iter().map(|a| a.to_string()).collect();
     
     dbg!(scrape_rta_timeslots(locations, &settings).await);
