@@ -46,6 +46,8 @@ cd nsw-drivers-test
 
 # Create a file .env and fill in with same details as .envexample
 
+# Change settings.yaml settings if you want
+
 # Run Docker Compose
 docker-compose up -d
 
