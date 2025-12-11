@@ -41,11 +41,11 @@ pub async fn scrape_rta_timeslots(
         caps.add_arg("--headless=new")?;
     }
 
-    caps.add_chrome_arg("--no-sandbox")?;
-    caps.add_chrome_arg("--disable-dev-shm-usage")?;
-    caps.add_chrome_arg("--disable-gpu")?;
-    caps.add_chrome_arg("--window-size=1920,1080")?;
-    caps.add_chrome_arg("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36")
+    caps.add_arg("--no-sandbox")?;
+    caps.add_arg("--disable-dev-shm-usage")?;
+    caps.add_arg("--disable-gpu")?;
+    caps.add_arg("--window-size=1920,1080")?;
+    caps.add_arg("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36");
 
     let driver = WebDriver::new(settings.selenium_driver_url.clone(), caps).await?;
 
