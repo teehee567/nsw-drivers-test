@@ -38,15 +38,14 @@ pub async fn scrape_rta_timeslots(
 
     let mut caps = DesiredCapabilities::chrome();
     if settings.headless {
-        caps.add_arg("--headless")?;
+        caps.add_arg("--headless=new")?;
     }
-    caps.add_arg("--no-sandbox")?;
-    caps.add_arg("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36")?;
-    caps.add_arg("--disable-blink-features=AutomationControlled")?;
-    caps.add_arg("--enable-automation")?;
-    caps.add_experimental_option("excludeSwitches", vec!["enable-automation"]);
-    caps.add_experimental_option("useAutomationExtension", false);
 
+    caps.add_chrome_arg("--no-sandbox")?;
+    caps.add_chrome_arg("--disable-dev-shm-usage")?;
+    caps.add_chrome_arg("--disable-gpu")?;
+    caps.add_chrome_arg("--window-size=1920,1080")?;
+    caps.add_chrome_arg("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36")
 
     let driver = WebDriver::new(settings.selenium_driver_url.clone(), caps).await?;
 

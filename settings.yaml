@@ -5,5 +5,5 @@ have_booking: false
 selenium_driver_url: "http://localhost:57908"
 selenium_element_timout: 20000
 selenium_element_polling: 100
-retries: 3
-scrape_refresh_time_min: 10
+retries: 4
+scrape_refresh_time_min: 120

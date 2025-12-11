@@ -68,4 +68,4 @@ WORKDIR /app
 
 EXPOSE 8080
 # Run ChromeDriver and the server
-CMD chromedriver --port=57908 --whitelisted-ips='' --disable-dev-shm-usage --no-sandbox & /app/target/release/nsw-closest-display
+CMD chromedriver --port=57908 --allowed-origins='*' & /app/target/release/nsw-closest-display
