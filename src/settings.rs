@@ -15,7 +15,7 @@ pub struct Settings {
     pub selenium_element_timout: u64,
     pub selenium_element_polling: u64,
     pub retries: u64,
-    pub scrape_refresh_time: u64,
+    pub scrape_refresh_time_min: u64,
 }
 
 impl Settings {

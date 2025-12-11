@@ -141,7 +141,7 @@ impl BookingManager {
         let running_status = Arc::clone(get_background_status());
 
         tokio::spawn(async move {
-            let update_interval = Duration::from_secs(settings.scrape_refresh_time * 3600);
+            let update_interval = Duration::from_secs(settings.scrape_refresh_time_min * 60);
 
             while *running_status.read().unwrap() {
                 BookingManager::perform_update(locations.clone(), &file_path, settings.clone())
@@ -158,6 +158,7 @@ impl BookingManager {
     }
 
     pub async fn perform_update(locations: Vec<String>, file_path: &str, settings: Settings) {
+        let start_time = Instant::now();
         let max_retries = settings.retries;
 
         let mut final_results: HashMap<String, LocationBookings> = HashMap::new();
@@ -233,8 +234,12 @@ impl BookingManager {
 
         if let Err(e) = Self::save_to_file(file_path) {
             eprintln!("ERROR: Failed to save booking data to file '{}': {}", file_path, e);
-        } else {
-            println!("INFO: Update process complete. Data saved to '{}'.", file_path);
         }
+
+        let elapsed = start_time.elapsed();
+        let minutes = elapsed.as_secs() / 60;
+        let seconds = elapsed.as_secs() % 60;
+        let millis = elapsed.subsec_millis();
+        println!("INFO: Total scraping time across all attempts: {}m {}s {}ms ({} locations)", minutes, seconds, millis, locations.len());
     }
 }
