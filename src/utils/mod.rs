@@ -1,2 +1,2 @@
-pub mod geocoding;
 pub mod date;
+pub mod geocoding;

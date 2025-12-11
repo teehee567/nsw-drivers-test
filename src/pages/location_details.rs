@@ -146,4 +146,3 @@ pub fn ExpandedLocationDetails(location_id: String, expanded: ReadSignal<bool>) 
         </Show>
     }
 }
-

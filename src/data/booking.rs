@@ -93,10 +93,13 @@ impl BookingManager {
     }
 
     fn clean_data(results: Vec<LocationBookings>) -> Vec<LocationBookings> {
-        results.into_iter().map(|mut location| {
-            location.slots.retain(|slot| slot.availability);
-            location
-        }).collect()
+        results
+            .into_iter()
+            .map(|mut location| {
+                location.slots.retain(|slot| slot.availability);
+                location
+            })
+            .collect()
     }
 
     pub fn update_date() {
@@ -171,25 +174,32 @@ impl BookingManager {
             }
 
             println!(
-                "INFO: Scraping attempt {}/{} for {} locations...", 
-                attempt, max_retries, remaining_locations.len()
+                "INFO: Scraping attempt {}/{} for {} locations...",
+                attempt,
+                max_retries,
+                remaining_locations.len()
             );
-            
+
             match super::rta::scrape_rta_timeslots(remaining_locations.clone(), &settings).await {
                 Ok(result_map) => {
                     println!(
                         "INFO: Successfully scraped {}/{} locations in attempt {}.",
-                        result_map.len(), remaining_locations.len(), attempt
+                        result_map.len(),
+                        remaining_locations.len(),
+                        attempt
                     );
-                    
+
                     for (k, v) in result_map {
                         final_results.insert(k.to_string(), v);
                     }
-                    
+
                     remaining_locations.retain(|loc| !final_results.contains_key(loc));
-                    
+
                     if remaining_locations.is_empty() {
-                        println!("INFO: All locations successfully scraped after {} attempts.", attempt);
+                        println!(
+                            "INFO: All locations successfully scraped after {} attempts.",
+                            attempt
+                        );
                         break;
                     } else {
                         println!(
@@ -203,11 +213,12 @@ impl BookingManager {
                         "ERROR: Scraping failed on attempt {}/{}: {:?}",
                         attempt, max_retries, e
                     );
-                    
+
                     if attempt == max_retries {
                         eprintln!(
                             "ERROR: Failed to scrape {} locations after {} attempts.",
-                            remaining_locations.len(), max_retries
+                            remaining_locations.len(),
+                            max_retries
                         );
                         if final_results.is_empty() {
                             eprintln!("ERROR: No data was successfully scraped. No update will be performed.");
@@ -221,7 +232,7 @@ impl BookingManager {
                     }
                 }
             }
-            
+
             if attempt < max_retries && !remaining_locations.is_empty() {
                 tokio::time::sleep(Duration::from_secs(5)).await;
             }
@@ -233,13 +244,22 @@ impl BookingManager {
         }
 
         if let Err(e) = Self::save_to_file(file_path) {
-            eprintln!("ERROR: Failed to save booking data to file '{}': {}", file_path, e);
+            eprintln!(
+                "ERROR: Failed to save booking data to file '{}': {}",
+                file_path, e
+            );
         }
 
         let elapsed = start_time.elapsed();
         let minutes = elapsed.as_secs() / 60;
         let seconds = elapsed.as_secs() % 60;
         let millis = elapsed.subsec_millis();
-        println!("INFO: Total scraping time across all attempts: {}m {}s {}ms ({} locations)", minutes, seconds, millis, locations.len());
+        println!(
+            "INFO: Total scraping time across all attempts: {}m {}s {}ms ({} locations)",
+            minutes,
+            seconds,
+            millis,
+            locations.len()
+        );
     }
 }

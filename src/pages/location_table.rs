@@ -137,15 +137,17 @@ pub fn LocationsTable(
             let ordering = match column {
                 SortColumn::Name => a.0.name.cmp(&b.0.name),
                 SortColumn::Distance => a.1.total_cmp(&b.1),
-                SortColumn::EarliestSlot => {
-                    match (&a.2, &b.2) {
-                        (Some(slot_a), Some(slot_b)) => slot_a.cmp(&slot_b),
-                        (Some(_), None) => std::cmp::Ordering::Less,
-                        (None, Some(_)) => std::cmp::Ordering::Greater,
-                        (None, None) => std::cmp::Ordering::Equal,
-                    }
+                SortColumn::EarliestSlot => match (&a.2, &b.2) {
+                    (Some(slot_a), Some(slot_b)) => slot_a.cmp(&slot_b),
+                    (Some(_), None) => std::cmp::Ordering::Less,
+                    (None, Some(_)) => std::cmp::Ordering::Greater,
+                    (None, None) => std::cmp::Ordering::Equal,
                 },
-                SortColumn::PassRate => b.0.pass_rate.partial_cmp(&a.0.pass_rate).unwrap_or(std::cmp::Ordering::Equal),
+                SortColumn::PassRate => {
+                    b.0.pass_rate
+                        .partial_cmp(&a.0.pass_rate)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                }
             };
 
             match direction {

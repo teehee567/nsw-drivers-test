@@ -1,9 +1,9 @@
+use dotenv::dotenv;
 use serde::Deserialize;
 use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use dotenv::dotenv;
 
 #[derive(Deserialize, Clone)]
 pub struct Settings {
@@ -21,16 +21,16 @@ pub struct Settings {
 impl Settings {
     pub fn from_yaml<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
         dotenv().ok();
-        
+
         let mut file = File::open(path)?;
         let mut contents = String::new();
         file.read_to_string(&mut contents)?;
-        
+
         let mut settings: Settings = serde_yaml::from_str(&contents)?;
-        
+
         settings.username = parse_env_var(&settings.username)?;
         settings.password = parse_env_var(&settings.password)?;
-        
+
         Ok(settings)
     }
 }

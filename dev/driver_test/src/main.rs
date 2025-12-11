@@ -139,15 +139,12 @@ pub async fn scrape_rta_timeslots(
     if settings.headless {
         caps.add_arg("--headless=new")?;
     }
+
     caps.add_arg("--no-sandbox")?;
     caps.add_arg("--disable-dev-shm-usage")?;
+    caps.add_arg("--disable-gpu")?;
     caps.add_arg("--window-size=1920,1080")?;
-    caps.add_arg("--start-maximized")?;
-    caps.add_arg("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.114 Safari/537.36")?;
-    caps.add_arg("--disable-blink-features=AutomationControlled")?;
-    caps.add_experimental_option("excludeSwitches", vec!["enable-automation"]);
-    caps.add_experimental_option("useAutomationExtension", false);
-
+    caps.add_arg("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36");
 
     let driver = WebDriver::new(settings.selenium_driver_url.clone(), caps).await?;
 
@@ -244,7 +241,7 @@ pub async fn scrape_rta_timeslots(
     }
 
     for location in locations {
-        println!("INFO: Processing location: {}", location);
+        // println!("INFO: Processing location: {}", location);
         let process_result: WebDriverResult<LocationBookings> = async {
 
             random_sleep(1000, 2000).await;
@@ -265,7 +262,7 @@ pub async fn scrape_rta_timeslots(
                  return Err(e);
             }
 
-            println!("INFO: Selected location: {}", location);
+            // println!("INFO: Selected location: {}", location);
             random_sleep(2500, 4000).await;
 
             let next_button_loc = driver.query(By::Id("nextButton")).first().await?;
@@ -278,12 +275,10 @@ pub async fn scrape_rta_timeslots(
             match driver.query(By::Id("getEarliestTime")).first().await {
                 Ok(element) => {
                      if element.is_clickable().await.unwrap_or(false) {
-                         println!("INFO: Found 'Get Earliest Time' button, attempting click.");
                          random_sleep(200, 400).await;
                          if let Err(e) = element.click().await {
                             eprintln!("WARN: Failed to click 'Get Earliest Time' button for {}: {}. Proceeding anyway.", location, e);
                          } else {
-                             println!("INFO: Clicked 'Get Earliest Time'.");
                              random_sleep(2500, 4500).await;
                          }
                      } else {

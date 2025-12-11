@@ -9,9 +9,9 @@ use web_sys::wasm_bindgen::prelude::Closure;
 
 use crate::data::location::LocationManager;
 use crate::data::shared_booking::TimeSlot;
+use crate::pages::location_table::LocationsTable;
 use crate::utils::date::TimeDisplay;
 use crate::utils::geocoding::geocode_address;
-use crate::pages::location_table::LocationsTable;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LocationBookingViewModel {
