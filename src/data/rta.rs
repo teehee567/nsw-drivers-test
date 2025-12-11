@@ -162,13 +162,9 @@ pub async fn scrape_rta_timeslots(
         random_sleep(1000, 2000).await;
     } else {
         let book_test = driver
-            .query(By::XPath("//*[text()=\"Book test\"]"))
-            .first()
-            .await?;
-        book_test
-            .wait_until()
+            .query(By::XPath("//*[text()='Book test']"))
             .wait(timeout, polling)
-            .displayed()
+            .first()
             .await?;
         random_sleep(200, 500).await;
         book_test.click().await?;
