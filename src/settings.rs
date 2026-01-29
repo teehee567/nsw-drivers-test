@@ -16,6 +16,15 @@ pub struct Settings {
     pub selenium_element_polling: u64,
     pub retries: u64,
     pub scrape_refresh_time_min: u64,
+    pub proxy_path: String,
+    #[serde(default = "default_parallel_browsers")]
+    pub parallel_browsers: usize,
+    #[serde(skip)]
+    pub proxies: Vec<String>,
+}
+
+fn default_parallel_browsers() -> usize {
+    4
 }
 
 impl Settings {
@@ -30,6 +39,16 @@ impl Settings {
 
         settings.username = parse_env_var(&settings.username)?;
         settings.password = parse_env_var(&settings.password)?;
+        settings.proxy_path = parse_env_var(&settings.proxy_path)?;
+
+        // Load proxies from file
+        let proxy_contents = std::fs::read_to_string(&settings.proxy_path)
+            .map_err(|e| format!("Failed to read proxy file '{}': {}", settings.proxy_path, e))?;
+        settings.proxies = proxy_contents
+            .lines()
+            .map(|line| line.trim().to_string())
+            .filter(|line| !line.is_empty())
+            .collect();
 
         Ok(settings)
     }

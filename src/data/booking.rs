@@ -1,3 +1,4 @@
+use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
@@ -64,7 +65,7 @@ impl BookingManager {
 
     pub fn init_from_file(file_path: &str) -> Result<(), String> {
         if !Path::new(file_path).exists() {
-            println!("No path for booking data");
+            debug!("No path for booking data");
             return Ok(());
         }
 
@@ -169,12 +170,12 @@ impl BookingManager {
 
         for attempt in 1..=max_retries {
             if remaining_locations.is_empty() {
-                println!("INFO: All locations successfully scraped.");
+                info!("All locations successfully scraped.");
                 break;
             }
 
-            println!(
-                "INFO: Scraping attempt {}/{} for {} locations...",
+            info!(
+                "Scraping attempt {}/{} for {} locations...",
                 attempt,
                 max_retries,
                 remaining_locations.len()
@@ -182,8 +183,8 @@ impl BookingManager {
 
             match super::rta::scrape_rta_timeslots(remaining_locations.clone(), &settings).await {
                 Ok(result_map) => {
-                    println!(
-                        "INFO: Successfully scraped {}/{} locations in attempt {}.",
+                    info!(
+                        "Successfully scraped {}/{} locations in attempt {}.",
                         result_map.len(),
                         remaining_locations.len(),
                         attempt
@@ -196,36 +197,36 @@ impl BookingManager {
                     remaining_locations.retain(|loc| !final_results.contains_key(loc));
 
                     if remaining_locations.is_empty() {
-                        println!(
-                            "INFO: All locations successfully scraped after {} attempts.",
+                        info!(
+                            "All locations successfully scraped after {} attempts.",
                             attempt
                         );
                         break;
                     } else {
-                        println!(
-                            "WARN: {} locations still need to be scraped.",
+                        warn!(
+                            "{} locations still need to be scraped.",
                             remaining_locations.len()
                         );
                     }
                 }
                 Err(e) => {
-                    eprintln!(
-                        "ERROR: Scraping failed on attempt {}/{}: {:?}",
+                    error!(
+                        "Scraping failed on attempt {}/{}: {:?}",
                         attempt, max_retries, e
                     );
 
                     if attempt == max_retries {
-                        eprintln!(
-                            "ERROR: Failed to scrape {} locations after {} attempts.",
+                        error!(
+                            "Failed to scrape {} locations after {} attempts.",
                             remaining_locations.len(),
                             max_retries
                         );
                         if final_results.is_empty() {
-                            eprintln!("ERROR: No data was successfully scraped. No update will be performed.");
+                            error!("No data was successfully scraped. No update will be performed.");
                             return;
                         } else {
-                            eprintln!(
-                                "WARNING: Partial data collected. Successfully scraped {}/{} locations.",
+                            warn!(
+                                "Partial data collected. Successfully scraped {}/{} locations.",
                                 final_results.len(), locations.len()
                             );
                         }
@@ -244,8 +245,8 @@ impl BookingManager {
         }
 
         if let Err(e) = Self::save_to_file(file_path) {
-            eprintln!(
-                "ERROR: Failed to save booking data to file '{}': {}",
+            error!(
+                "Failed to save booking data to file '{}': {}",
                 file_path, e
             );
         }
@@ -254,8 +255,8 @@ impl BookingManager {
         let minutes = elapsed.as_secs() / 60;
         let seconds = elapsed.as_secs() % 60;
         let millis = elapsed.subsec_millis();
-        println!(
-            "INFO: Total scraping time across all attempts: {}m {}s {}ms ({} locations)",
+        info!(
+            "Total scraping time across all attempts: {}m {}s {}ms ({} locations)",
             minutes,
             seconds,
             millis,

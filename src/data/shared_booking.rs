@@ -5,10 +5,13 @@ use std::{
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash)]
+#[cfg_attr(feature = "ssr", derive(pyo3::FromPyObject))]
+#[cfg_attr(feature = "ssr", pyo3(from_item_all))]
 pub struct TimeSlot {
     pub availability: bool,
     pub slot_number: Option<u32>,
     #[serde(rename = "startTime")]
+    #[cfg_attr(feature = "ssr", pyo3(item("startTime")))]
     pub start_time: String,
 }
 
@@ -60,6 +63,8 @@ impl Ord for TimeSlot {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash)]
+#[cfg_attr(feature = "ssr", derive(pyo3::FromPyObject))]
+#[cfg_attr(feature = "ssr", pyo3(from_item_all))]
 pub struct LocationBookings {
     pub location: String,
     pub slots: Vec<TimeSlot>,
