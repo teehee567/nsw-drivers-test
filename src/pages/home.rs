@@ -224,10 +224,24 @@ pub fn HomePage() -> impl IntoView {
     }
 
     view! {
+        <script
+            data-name="BMC-Widget"
+            data-cfasync="false"
+            src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js"
+            data-id="teehee567"
+            data-description="Support me on Buy me a coffee!"
+            data-message="Help cover server costs to keep this service running!"
+            data-color="#FFDD00"
+            data-position="Right"
+            data-x_margin="18"
+            data-y_margin="18"
+        ></script>
+
         <div class="max-w-4xl mx-auto p-4">
             <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6" role="alert">
                 <strong class="font-bold">UP as of 29/01/2026: </strong>
                 <span class="block sm:inline">Currently up, refresh times will go down as i continue monitoring</span>
+                <span class="block mt-2 text-sm text-green-600">"If you can, $1-$2 helps with server costs :)"</span>
             </div>
 
             <div class="flex justify-between items-center mb-6">
@@ -328,7 +342,7 @@ pub fn HomePage() -> impl IntoView {
                 <div class="text-sm text-gray-500">
                     <p>Location search results are made using "https://nominatim.org/" and are always done on your browser, your location information never touches our servers</p>
                     <p>Note: Distances are calculated using the Haversine formula and represent "as the crow flies" distance.</p>
-                    <p>You can support me by giving me a github star</p>
+                    <p>"You can support me by giving me a github star, or if you can $1-$2 helps with server costs :)"</p>
                 </div>
 
                 <div class="flex gap-2">

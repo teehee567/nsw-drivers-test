@@ -17,14 +17,10 @@ pub struct Settings {
     pub retries: u64,
     pub scrape_refresh_time_min: u64,
     pub proxy_path: String,
-    #[serde(default = "default_parallel_browsers")]
     pub parallel_browsers: usize,
+    pub scraping_enabled: bool,
     #[serde(skip)]
     pub proxies: Vec<String>,
-}
-
-fn default_parallel_browsers() -> usize {
-    4
 }
 
 impl Settings {

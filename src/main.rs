@@ -49,7 +49,11 @@ async fn main() {
 
     let location_id = get_location_names();
 
-    BookingManager::start_background_updates(location_id, data_file_path.to_string(), settings);
+    if settings.scraping_enabled {
+        BookingManager::start_background_updates(location_id, data_file_path.to_string(), settings);
+    } else {
+        println!("Scraping is disabled. Running in UI-only mode.");
+    }
 
     let app = Router::new()
         .leptos_routes(&leptos_options, routes, {
