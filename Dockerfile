@@ -19,32 +19,22 @@ RUN cargo leptos build --release -vv
 
 FROM debian:bookworm-slim as runner
 
-# Install Python, pip, and Chrome dependencies
+# Install Python, pip, and browser dependencies for Playwright/Patchright
 RUN apt-get update -y && apt-get install -y \
     python3 python3-pip python3-venv \
-    wget unzip curl jq ca-certificates libssl3 \
-    # Chrome dependencies
-    libxss1 libappindicator1 libgconf-2-4 \
-    fonts-liberation libasound2 libnspr4 libnss3 libx11-xcb1 libxtst6 lsb-release xdg-utils \
-    libgbm1 libnss3 libatk-bridge2.0-0 libgtk-3-0 libx11-xcb1 libxcb-dri3-0 \
-    # For headless Chrome
-    xvfb \
+    wget curl ca-certificates libssl3 \
+    # Playwright/Patchright browser dependencies
+    libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+    libdbus-1-3 libxkbcommon0 libatspi2.0-0 libxcomposite1 libxdamage1 \
+    libxfixes3 libxrandr2 libgbm1 libasound2 libpango-1.0-0 libcairo2 \
+    libx11-6 libx11-xcb1 libxcb1 libxext6 fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
-# Fetch the latest Chrome version and install it
-RUN curl -s https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json > /tmp/versions.json && \
-    CHROME_URL=$(jq -r '.channels.Stable.downloads.chrome[] | select(.platform=="linux64") | .url' /tmp/versions.json) && \
-    wget -q --continue -O /tmp/chrome-linux64.zip $CHROME_URL && \
-    unzip /tmp/chrome-linux64.zip -d /opt/chrome && \
-    chmod +x /opt/chrome/chrome-linux64/chrome && \
-    ln -s /opt/chrome/chrome-linux64/chrome /usr/local/bin/google-chrome && \
-    rm /tmp/chrome-linux64.zip /tmp/versions.json
+# Install scrapling with all dependencies
+RUN pip3 install --break-system-packages scrapling[all]
 
-# Set Chrome path for undetected-chromedriver
-ENV CHROME_PATH=/opt/chrome/chrome-linux64/chrome
-
-# Install Python packages for scraping
-RUN pip3 install --break-system-packages undetected-chromedriver selenium webdriver-manager
+# Install browser binaries for patchright
+RUN patchright install chromium
 
 # Copy only what's needed from the builder
 COPY --from=builder /app/target/release/nsw-closest-display /app/target/release/nsw-closest-display

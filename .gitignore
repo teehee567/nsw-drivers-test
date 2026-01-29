@@ -22,3 +22,13 @@ temp/
 .idea/
 
 .direnv/
+
+# Playwright
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+# Patchright/Scrapling
+.patchright/
+.scrapling/
+*.har

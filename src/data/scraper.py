@@ -2,15 +2,9 @@
 import logging
 import random
 import time
-from typing import Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import undetected_chromedriver as uc
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait, Select
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service as ChromeService
-from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.os_manager import ChromeType
+from scrapling import StealthyFetcher
 
 logger = logging.getLogger("rta_scraper")
 
@@ -20,13 +14,141 @@ def random_sleep(min_ms: int, max_ms: int):
     time.sleep(duration)
 
 
-def type_like_human(element, text: str, min_delay_ms: int = 30, max_delay_ms: int = 90):
+async def _type_like_human(page, selector: str, text: str, min_delay_ms: int = 30, max_delay_ms: int = 90):
+    """Type text character by character with random delays."""
+    element = await page.wait_for_selector(selector, timeout=30000)
+    await element.click()
     for char in text:
-        element.send_keys(char)
-        random_sleep(min_delay_ms, max_delay_ms)
+        await page.keyboard.type(char)
+        await page.wait_for_timeout(random.randint(min_delay_ms, max_delay_ms))
 
 
-def scrape_rta_timeslots(
+async def _scrape_with_page(
+    page,
+    locations: list,
+    username: str,
+    password: str,
+    have_booking: bool,
+    timeout_ms: int,
+    group_idx: int,
+) -> dict:
+    """Scrape locations using an already-opened page."""
+    location_bookings = {}
+    
+    await page.goto("https://www.myrta.com/wps/portal/extvp/myrta/login/")
+    await page.wait_for_timeout(random.randint(500, 1000))
+
+    # Login
+    await _type_like_human(page, "#widget_cardNumber", username)
+    await page.wait_for_timeout(random.randint(150, 350))
+
+    await _type_like_human(page, "#widget_password", password)
+    await page.wait_for_timeout(random.randint(200, 400))
+
+    await page.click("#nextButton")
+    await page.wait_for_timeout(random.randint(1000, 2000))
+    
+    if have_booking:
+        await page.click("//*[text()=\"Manage booking\"]")
+        await page.wait_for_timeout(random.randint(750, 1250))
+        
+        await page.click("#changeLocationButton")
+        await page.wait_for_timeout(random.randint(500, 1000))
+    else:
+        await page.click("text=Book test")
+        await page.wait_for_timeout(random.randint(750, 1250))
+        
+        await page.click("#CAR")
+        await page.wait_for_timeout(random.randint(250, 500))
+        
+        await page.click("fieldset#DC span.rms_testItemResult")
+        await page.wait_for_timeout(random.randint(250, 500))
+        
+        await page.click("#nextButton")
+        await page.wait_for_timeout(random.randint(750, 1250))
+        
+        await page.click("#checkTerms")
+        await page.wait_for_timeout(random.randint(250, 500))
+        
+        await page.click("#nextButton")
+        await page.wait_for_timeout(random.randint(500, 1000))
+
+    for location in locations:
+        try:
+            await page.wait_for_timeout(random.randint(500, 1000))
+
+            await page.click("#rms_batLocLocSel")
+            await page.wait_for_timeout(random.randint(250, 500))
+
+            await page.select_option("#rms_batLocationSelect2", value=location)
+            await page.wait_for_timeout(random.randint(1250, 2000))
+
+            await page.click("#nextButton")
+            await page.wait_for_timeout(random.randint(500, 1000))
+
+            # Try clicking earliest time button if available
+            try:
+                earliest_btn = await page.query_selector("#getEarliestTime")
+                if earliest_btn and await earliest_btn.is_visible():
+                    await earliest_btn.click()
+                    await page.wait_for_timeout(random.randint(1250, 2250))
+            except:
+                await page.wait_for_timeout(random.randint(250, 500))
+            
+            await page.wait_for_timeout(random.randint(500, 1250))
+
+            # Get timeslots from JavaScript
+            timeslots = await page.evaluate("() => window.timeslots")
+            
+            next_available_date = None
+            slots = []
+            
+            if timeslots and "ajaxresult" in timeslots:
+                ajax = timeslots["ajaxresult"]
+                if "slots" in ajax:
+                    slots_data = ajax["slots"]
+                    next_available_date = slots_data.get("nextAvailableDate")
+                    list_timeslots = slots_data.get("listTimeSlot", [])
+                    
+                    for slot in list_timeslots:
+                        slots.append({
+                            "availability": slot.get("availability", False),
+                            "slot_number": slot.get("slotNumber"),
+                            "startTime": slot.get("startTime", ""),
+                        })
+            
+            logger.info(f"Group {group_idx}: Parsed {len(slots)} slots for {location}. Next available: {next_available_date}")
+            
+            location_bookings[location] = {
+                "location": location,
+                "slots": slots,
+                "next_available_date": next_available_date,
+            }
+            
+            await page.wait_for_timeout(random.randint(400, 750))
+            await page.click("#anotherLocationLink")
+            
+        except Exception as e:
+            logger.error(f"Group {group_idx}: Failed processing location {location}: {e}")
+
+            try:
+                another_link = await page.query_selector("#anotherLocationLink")
+                if another_link and await another_link.is_visible():
+                    await another_link.click()
+                    logger.info(f"Group {group_idx}: Recovery click succeeded.")
+            except:
+                logger.warning(f"Group {group_idx}: Recovery failed.")
+            await page.wait_for_timeout(random.randint(1000, 1500))
+            continue
+        
+        await page.wait_for_timeout(random.randint(750, 1500))
+    
+    logger.info(f"Group {group_idx}: Finished scraping {len(location_bookings)} locations.")
+    
+    return location_bookings
+
+
+def _scrape_single_group(
     locations: list,
     headless: bool,
     username: str,
@@ -35,199 +157,124 @@ def scrape_rta_timeslots(
     timeout_ms: int,
     polling_ms: int,
     proxy: str,
+    group_idx: int,
 ) -> dict:
-    logger.info(f"Starting browser with proxy {proxy} for {len(locations)} locations")
-    location_bookings = {}
-    timeout_sec = timeout_ms / 1000.0
+    """Scrape a single group of locations with one browser instance."""
+    import asyncio
     
-    options = uc.ChromeOptions()
-    if headless:
-        options.add_argument("--headless=new")
-    options.add_argument(f"--proxy-server={proxy}")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
+    logger.info(f"Group {group_idx}: Starting browser with proxy {proxy} for {len(locations)} locations")
     
-    import os
-    import platform
-    from webdriver_manager.chrome import ChromeDriverManager
-    
-    chrome_install = ChromeDriverManager().install()
-    
-    # Check for CHROME_PATH environment variable first (used in Docker)
-    chrome_binary = os.environ.get("CHROME_PATH")
-    
-    if not chrome_binary or not os.path.exists(chrome_binary):
-        # Fall back to searching webdriver-manager's Chrome installation
-        chrome_dir = os.path.dirname(os.path.dirname(chrome_install))
-        chrome_binary = None
+    async def run():
+        fetcher = StealthyFetcher()
         
-        # Determine the Chrome binary name based on platform
-        if platform.system() == "Windows":
-            chrome_exe_name = "chrome.exe"
-        else:
-            chrome_exe_name = "chrome"
+        # Parse proxy (format: host:port)
+        proxy_config = {"server": f"http://{proxy}"} if proxy else None
         
-        for root, dirs, files in os.walk(chrome_dir):
-            if chrome_exe_name in files:
-                chrome_binary = os.path.join(root, chrome_exe_name)
-                break
-    
-    driver = uc.Chrome(
-        options=options,
-        browser_executable_path=chrome_binary,
-        driver_executable_path=chrome_install,
-    )
-    
-    try:
-        wait = WebDriverWait(driver, timeout_sec, poll_frequency=polling_ms / 1000.0)
+        page = await fetcher.async_fetch(
+            "https://www.myrta.com/wps/portal/extvp/myrta/login/",
+            headless=headless,
+            network_idle=True,
+            proxy=proxy_config,
+        )
         
-        driver.get("https://www.myrta.com/wps/portal/extvp/myrta/login/")
-        random_sleep(500, 1000)
-
-        username_input = wait.until(EC.presence_of_element_located((By.ID, "widget_cardNumber")))
-        random_sleep(100, 250)
-        type_like_human(username_input, username)
-        random_sleep(150, 350)
-
-        password_input = wait.until(EC.presence_of_element_located((By.ID, "widget_password")))
-        random_sleep(100, 250)
-        type_like_human(password_input, password)
-        random_sleep(200, 400)
-
-        next_button = wait.until(EC.element_to_be_clickable((By.ID, "nextButton")))
-        random_sleep(125, 300)
-        next_button.click()
-        random_sleep(1000, 2000)
-        
-        if have_booking:
-            manage_booking = wait.until(
-                EC.element_to_be_clickable((By.XPATH, "//*[text()=\"Manage booking\"]"))
+        try:
+            return await _scrape_with_page(
+                page.page,
+                locations,
+                username,
+                password,
+                have_booking,
+                timeout_ms,
+                group_idx,
             )
-            random_sleep(100, 250)
-            manage_booking.click()
-            random_sleep(750, 1250)
-            
-            change_location = wait.until(EC.element_to_be_clickable((By.ID, "changeLocationButton")))
-            random_sleep(100, 250)
-            change_location.click()
-            random_sleep(500, 1000)
-        else:
-            book_test = wait.until(EC.element_to_be_clickable((By.XPATH, "//*[text()='Book test']")))
-            random_sleep(100, 250)
-            book_test.click()
-            random_sleep(750, 1250)
-            
-            car_option = wait.until(EC.element_to_be_clickable((By.ID, "CAR")))
-            random_sleep(100, 250)
-            car_option.click()
-            random_sleep(250, 500)
-            
-            test_item = wait.until(EC.element_to_be_clickable(
-                (By.XPATH, "//fieldset[@id='DC']/span[contains(@class, 'rms_testItemResult')]")
-            ))
-            random_sleep(100, 250)
-            test_item.click()
-            random_sleep(250, 500)
-            
-            next_btn = wait.until(EC.element_to_be_clickable((By.ID, "nextButton")))
-            random_sleep(100, 250)
-            next_btn.click()
-            random_sleep(750, 1250)
-            
-            check_terms = wait.until(EC.element_to_be_clickable((By.ID, "checkTerms")))
-            random_sleep(50, 150)
-            check_terms.click()
-            random_sleep(250, 500)
-            
-            next_btn_terms = wait.until(EC.element_to_be_clickable((By.ID, "nextButton")))
-            random_sleep(100, 250)
-            next_btn_terms.click()
-            random_sleep(500, 1000)
-
-        for location in locations:
-            try:
-                random_sleep(500, 1000)
-
-                location_dropdown = wait.until(EC.element_to_be_clickable((By.ID, "rms_batLocLocSel")))
-                random_sleep(100, 200)
-                location_dropdown.click()
-                random_sleep(250, 500)
-
-                select_element = wait.until(EC.presence_of_element_located((By.ID, "rms_batLocationSelect2")))
-                select = Select(select_element)
-                select.select_by_value(location)
-                
-                random_sleep(1250, 2000)
-
-                next_btn_loc = wait.until(EC.element_to_be_clickable((By.ID, "nextButton")))
-                random_sleep(100, 250)
-                next_btn_loc.click()
-                random_sleep(500, 1000)
-
-                try:
-                    earliest_btn = driver.find_element(By.ID, "getEarliestTime")
-                    if earliest_btn.is_displayed() and earliest_btn.is_enabled():
-                        random_sleep(100, 200)
-                        earliest_btn.click()
-                        random_sleep(1250, 2250)
-                except:
-                    random_sleep(250, 500)
-                
-                random_sleep(500, 1250)
-
-                timeslots = driver.execute_script("return timeslots")
-                
-                next_available_date = None
-                slots = []
-                
-                if timeslots and "ajaxresult" in timeslots:
-                    ajax = timeslots["ajaxresult"]
-                    if "slots" in ajax:
-                        slots_data = ajax["slots"]
-                        next_available_date = slots_data.get("nextAvailableDate")
-                        list_timeslots = slots_data.get("listTimeSlot", [])
-                        
-                        for slot in list_timeslots:
-                            slots.append({
-                                "availability": slot.get("availability", False),
-                                "slot_number": slot.get("slotNumber"),
-                                "startTime": slot.get("startTime", ""),
-                            })
-                
-                logger.info(f"Parsed {len(slots)} slots for {location}. Next available: {next_available_date}")
-                
-                location_bookings[location] = {
-                    "location": location,
-                    "slots": slots,
-                    "next_available_date": next_available_date,
-                }
-                
-                random_sleep(400, 750)
-
-                another_location = wait.until(EC.element_to_be_clickable((By.ID, "anotherLocationLink")))
-                random_sleep(100, 250)
-                another_location.click()
-                
-            except Exception as e:
-                logger.error(f"Failed processing location {location}: {e}")
-
-                try:
-                    another_link = driver.find_element(By.ID, "anotherLocationLink")
-                    if another_link.is_displayed():
-                        another_link.click()
-                        logger.info("Recovery click succeeded.")
-                except:
-                    logger.warning("Recovery failed.")
-                random_sleep(1000, 1500)
-                continue
-            
-            random_sleep(750, 1500)
-        
-        logger.info(f"Finished scraping {len(location_bookings)} locations with proxy {proxy}.")
-        
-    finally:
-        driver.quit()
+        finally:
+            await page.page.context.browser.close()
     
-    return location_bookings
+    return asyncio.run(run())
+
+
+def scrape_rta_timeslots_parallel(
+    locations: list,
+    headless: bool,
+    username: str,
+    password: str,
+    have_booking: bool,
+    timeout_ms: int,
+    polling_ms: int,
+    proxies: list,
+    parallel_browsers: int,
+) -> dict:
+    """
+    Scrape locations using multiple browser instances in parallel.
+    
+    Args:
+        locations: List of location IDs to scrape
+        headless: Whether to run browsers in headless mode
+        username: Login username
+        password: Login password
+        have_booking: Whether user has existing booking
+        timeout_ms: Selenium element timeout in ms
+        polling_ms: Selenium polling interval in ms
+        proxies: List of proxy addresses
+        parallel_browsers: Number of parallel browser instances to use
+    
+    Returns:
+        Dictionary mapping location IDs to their booking data
+    """
+    if not locations:
+        return {}
+    
+    if not proxies:
+        logger.error("No proxies provided")
+        return {}
+    
+    # Shuffle locations for randomization
+    shuffled_locations = locations.copy()
+    random.shuffle(shuffled_locations)
+    
+    # Split locations into groups (one per parallel browser)
+    num_groups = min(parallel_browsers, len(proxies), len(locations))
+    location_groups = [[] for _ in range(num_groups)]
+    for i, loc in enumerate(shuffled_locations):
+        location_groups[i % num_groups].append(loc)
+    
+    # Use first N proxies for this batch
+    active_proxies = proxies[:num_groups]
+    
+    all_bookings = {}
+    
+    logger.info(f"Starting parallel scrape with {num_groups} browsers for {len(locations)} locations")
+    
+    with ThreadPoolExecutor(max_workers=num_groups) as executor:
+        futures = {}
+        
+        for group_idx, (group_locations, proxy) in enumerate(zip(location_groups, active_proxies)):
+            if not group_locations:
+                continue
+                
+            future = executor.submit(
+                _scrape_single_group,
+                group_locations,
+                headless,
+                username,
+                password,
+                have_booking,
+                timeout_ms,
+                polling_ms,
+                proxy,
+                group_idx,
+            )
+            futures[future] = (group_idx, proxy)
+        
+        for future in as_completed(futures):
+            group_idx, proxy = futures[future]
+            try:
+                result = future.result()
+                all_bookings.update(result)
+                logger.info(f"Group {group_idx} with proxy {proxy} completed. Got {len(result)} locations.")
+            except Exception as e:
+                logger.error(f"Group {group_idx} with proxy {proxy} failed: {e}")
+    
+    logger.info(f"Parallel scrape complete: {len(all_bookings)}/{len(locations)} locations scraped.")
+    
+    return all_bookings
