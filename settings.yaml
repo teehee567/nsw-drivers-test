@@ -7,6 +7,6 @@ selenium_element_timout: 20000
 selenium_element_polling: 100
 retries: 4
 scrape_refresh_time_min: 120
-scraping_enabled: false
+scraping_enabled: true
 parallel_browsers: 4
 proxy_path: "${PROXY_PATH}"

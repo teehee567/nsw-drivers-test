@@ -11,6 +11,7 @@ pub struct Settings {
     pub username: String,
     pub password: String,
     pub have_booking: bool,
+    // lol not even used anymore but whatever
     pub selenium_driver_url: String,
     pub selenium_element_timout: u64,
     pub selenium_element_polling: u64,
