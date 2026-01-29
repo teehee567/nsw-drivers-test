@@ -32,6 +32,8 @@ fn get_location_names() -> Vec<String> {
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
+
     let conf = get_configuration(None).unwrap();
     let leptos_options = conf.leptos_options;
     let addr = leptos_options.site_addr;

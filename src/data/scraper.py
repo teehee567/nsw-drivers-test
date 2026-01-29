@@ -6,6 +6,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from scrapling import StealthyFetcher
 
+# supresss scrapling logs
+logging.getLogger("scrapling").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+
 logger = logging.getLogger("rta_scraper")
 
 
@@ -14,7 +19,7 @@ def random_sleep(min_ms: int, max_ms: int):
     time.sleep(duration)
 
 
-async def _type_like_human(page, selector: str, text: str, min_delay_ms: int = 30, max_delay_ms: int = 90):
+async def _type_like_human(page, selector: str, text: str, min_delay_ms: int = 30, max_delay_ms: int = 120):
     element = await page.wait_for_selector(selector, timeout=30000)
     await element.click()
     for char in text:
@@ -34,64 +39,64 @@ async def _scrape_with_page(
     location_bookings = {}
     
     await page.goto("https://www.myrta.com/wps/portal/extvp/myrta/login/")
-    await page.wait_for_timeout(random.randint(500, 1000))
+    await page.wait_for_timeout(random.randint(1000, 2000))
 
     await _type_like_human(page, "#widget_cardNumber", username)
-    await page.wait_for_timeout(random.randint(150, 350))
+    await page.wait_for_timeout(random.randint(300, 700))
 
     await _type_like_human(page, "#widget_password", password)
-    await page.wait_for_timeout(random.randint(200, 400))
+    await page.wait_for_timeout(random.randint(400, 800))
 
     await page.click("#nextButton")
-    await page.wait_for_timeout(random.randint(1000, 2000))
+    await page.wait_for_timeout(random.randint(2000, 4000))
     
     if have_booking:
         await page.click("//*[text()=\"Manage booking\"]")
-        await page.wait_for_timeout(random.randint(750, 1250))
+        await page.wait_for_timeout(random.randint(1500, 2500))
         
         await page.click("#changeLocationButton")
-        await page.wait_for_timeout(random.randint(500, 1000))
+        await page.wait_for_timeout(random.randint(1000, 2000))
     else:
         await page.click("text=Book test")
-        await page.wait_for_timeout(random.randint(750, 1250))
+        await page.wait_for_timeout(random.randint(1500, 2500))
         
         await page.click("#CAR")
-        await page.wait_for_timeout(random.randint(250, 500))
+        await page.wait_for_timeout(random.randint(500, 1000))
         
         await page.click("fieldset#DC span.rms_testItemResult")
-        await page.wait_for_timeout(random.randint(250, 500))
+        await page.wait_for_timeout(random.randint(500, 1000))
         
         await page.click("#nextButton")
-        await page.wait_for_timeout(random.randint(750, 1250))
+        await page.wait_for_timeout(random.randint(1500, 2500))
         
         await page.click("#checkTerms")
-        await page.wait_for_timeout(random.randint(250, 500))
+        await page.wait_for_timeout(random.randint(500, 1000))
         
         await page.click("#nextButton")
-        await page.wait_for_timeout(random.randint(500, 1000))
+        await page.wait_for_timeout(random.randint(1000, 2000))
 
     for location in locations:
         try:
-            await page.wait_for_timeout(random.randint(500, 1000))
+            await page.wait_for_timeout(random.randint(1000, 2000))
 
             await page.click("#rms_batLocLocSel")
-            await page.wait_for_timeout(random.randint(250, 500))
+            await page.wait_for_timeout(random.randint(500, 1000))
 
             await page.select_option("#rms_batLocationSelect2", value=location)
-            await page.wait_for_timeout(random.randint(1250, 2000))
+            await page.wait_for_timeout(random.randint(2500, 4000))
 
             await page.click("#nextButton")
-            await page.wait_for_timeout(random.randint(500, 1000))
+            await page.wait_for_timeout(random.randint(1000, 2000))
 
             try:
                 earliest_btn = await page.query_selector("#getEarliestTime")
                 if earliest_btn and await earliest_btn.is_visible():
                     await earliest_btn.click()
-                    await page.wait_for_timeout(random.randint(1250, 2250))
+                    await page.wait_for_timeout(random.randint(2500, 4500))
             except:
-                await page.wait_for_timeout(random.randint(250, 500))
+                await page.wait_for_timeout(random.randint(500, 1000))
             
-            await page.wait_for_timeout(random.randint(500, 1250))
+            await page.wait_for_timeout(random.randint(1000, 2500))
 
             timeslots = await page.evaluate("() => window.timeslots")
             
@@ -120,7 +125,7 @@ async def _scrape_with_page(
                 "next_available_date": next_available_date,
             }
             
-            await page.wait_for_timeout(random.randint(400, 750))
+            await page.wait_for_timeout(random.randint(800, 1500))
             await page.click("#anotherLocationLink")
             
         except Exception as e:
@@ -133,10 +138,10 @@ async def _scrape_with_page(
                     logger.info(f"Group {group_idx}: Recovery click succeeded.")
             except:
                 logger.warning(f"Group {group_idx}: Recovery failed.")
-            await page.wait_for_timeout(random.randint(1000, 1500))
+            await page.wait_for_timeout(random.randint(2000, 3000))
             continue
         
-        await page.wait_for_timeout(random.randint(750, 1500))
+        await page.wait_for_timeout(random.randint(1500, 3000))
     
     logger.info(f"Group {group_idx}: Finished scraping {len(location_bookings)} locations.")
     

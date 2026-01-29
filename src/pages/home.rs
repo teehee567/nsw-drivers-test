@@ -225,9 +225,9 @@ pub fn HomePage() -> impl IntoView {
 
     view! {
         <div class="max-w-4xl mx-auto p-4">
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
-                <strong class="font-bold">Maintenance: </strong>
-                <span class="block sm:inline">Currently Down, Will be back with much lower refresh times</span>
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6" role="alert">
+                <strong class="font-bold">UP as of 29/01/2026: </strong>
+                <span class="block sm:inline">Currently up, refresh times will go down as i continue monitoring</span>
             </div>
 
             <div class="flex justify-between items-center mb-6">
