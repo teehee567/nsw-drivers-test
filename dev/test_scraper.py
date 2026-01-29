@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-from data.scraper import scrape_rta_timeslots
+from data.scraper import scrape_rta_timeslots_parallel
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,7 +39,7 @@ def main():
     headless = False
     have_booking = False
     
-    locations = ["141", "77", "35", "34", "Armidale", "Auburn", "Ballina"]
+    locations = ["141", "35", "34"]
     
     timeout_ms = 30000
     polling_ms = 500
@@ -48,8 +48,23 @@ def main():
     print(f"\n{'='*60}\nRTA Scraper Test\n{'='*60}")
     print(f"Username: {masked_user} | Headless: {headless} | Locations: {locations}\n")
     
+    proxies_path = Path(__file__).parent.parent / "data" / "proxies.env"
+    proxies = []
+    if proxies_path.exists():
+        with open(proxies_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    proxies.append(line)
+    
+    if not proxies:
+        print(f"ERROR: No proxies found in {proxies_path}")
+        return
+    
+    print(f"Loaded {len(proxies)} proxies")
+    
     try:
-        results = scrape_rta_timeslots(
+        results = scrape_rta_timeslots_parallel(
             locations=locations,
             headless=headless,
             username=username,
@@ -57,6 +72,8 @@ def main():
             have_booking=have_booking,
             timeout_ms=timeout_ms,
             polling_ms=polling_ms,
+            proxies=proxies,
+            parallel_browsers=1,
         )
         
         print(f"\n{'='*60}\nRESULTS\n{'='*60}")

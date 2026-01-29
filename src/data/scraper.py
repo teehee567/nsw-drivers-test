@@ -1,4 +1,5 @@
-
+import asyncio
+import json
 import logging
 import random
 import time
@@ -6,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from scrapling import StealthyFetcher
 
-# supresss scrapling logs
+# Suppress scrapling logs
 logging.getLogger("scrapling").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -96,26 +97,31 @@ async def _scrape_with_page(
             except:
                 await page.wait_for_timeout(random.randint(500, 1000))
             
-            await page.wait_for_timeout(random.randint(1000, 2500))
+            await page.wait_for_timeout(random.randint(1500, 3000))
 
-            timeslots = await page.evaluate("() => window.timeslots")
+            # use chrome dev protocol to extract timeslots,
+            # something about pywright not executing evaluate calls in the same javascript world as what selenium does
+            cdp = await page.context.new_cdp_session(page)
+            result = await cdp.send("Runtime.evaluate", {"expression": "JSON.stringify(timeslots)", "returnByValue": True})
+            await cdp.detach()
+            timeslots_str = result.get("result", {}).get("value")
+            timeslots = json.loads(timeslots_str) if timeslots_str and timeslots_str != "undefined" else None
             
             next_available_date = None
             slots = []
             
-            if timeslots and "ajaxresult" in timeslots:
-                ajax = timeslots["ajaxresult"]
-                if "slots" in ajax:
-                    slots_data = ajax["slots"]
-                    next_available_date = slots_data.get("nextAvailableDate")
-                    list_timeslots = slots_data.get("listTimeSlot", [])
+            if timeslots:
+                ajax = timeslots.get("ajaxresult", {})
+                slots_data = ajax.get("slots", {})
+                next_available_date = slots_data.get("nextAvailableDate")
+                list_timeslots = slots_data.get("listTimeSlot", [])
                     
-                    for slot in list_timeslots:
-                        slots.append({
-                            "availability": slot.get("availability", False),
-                            "slot_number": slot.get("slotNumber"),
-                            "startTime": slot.get("startTime", ""),
-                        })
+                for slot in list_timeslots:
+                    slots.append({
+                        "availability": slot.get("availability", False),
+                        "slot_number": slot.get("slotNumber"),
+                        "startTime": slot.get("startTime", ""),
+                    })
             
             logger.info(f"Group {group_idx}: Parsed {len(slots)} slots for {location}. Next available: {next_available_date}")
             
@@ -125,7 +131,7 @@ async def _scrape_with_page(
                 "next_available_date": next_available_date,
             }
             
-            await page.wait_for_timeout(random.randint(800, 1500))
+            await page.wait_for_timeout(random.randint(30000, 150000))
             await page.click("#anotherLocationLink")
             
         except Exception as e:
@@ -159,8 +165,6 @@ def _scrape_single_group(
     proxy: str,
     group_idx: int,
 ) -> dict:
-    import asyncio
-    
     logger.info(f"Group {group_idx}: Starting browser with proxy {proxy} for {len(locations)} locations")
     
     result_holder = {"bookings": {}}
