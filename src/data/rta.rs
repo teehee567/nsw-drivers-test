@@ -2,12 +2,13 @@ use pyo3::prelude::*;
 use pyo3::types::PyModule;
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
+use std::ffi::{CStr, CString};
 use std::sync::Arc;
 
 use super::shared_booking::LocationBookings;
 use crate::settings::Settings;
 
-const SCRAPER_PY: &str = include_str!("scraper.py");
+const SCRAPER_PY: &CStr = c"scraper.py";
 
 #[derive(Debug)]
 pub struct ScrapeError(String);
@@ -58,16 +59,12 @@ fn scrape_single_group(
     proxy: String,
 ) -> Result<HashMap<String, LocationBookings>, ScrapeError> {
     Python::with_gil(|py| {
-        // Initialize pyo3-log to bridge Python logging to Rust's log crate
         let _ = pyo3_log::try_init();
 
-        // Load the scraper module from embedded source
-        let scraper_module = PyModule::from_code(py, SCRAPER_PY, "scraper.py", "scraper")?;
+        let scraper_module = PyModule::from_code(py, SCRAPER_PY, c"scraper.py", c"scraper")?;
 
-        // Get the scrape function
         let scrape_fn = scraper_module.getattr("scrape_rta_timeslots")?;
 
-        // Call the Python function
         let result = scrape_fn.call1((
             locations,
             headless,
@@ -79,7 +76,6 @@ fn scrape_single_group(
             proxy,
         ))?;
 
-        // Extract directly to HashMap<String, LocationBookings>
         let bookings: HashMap<String, LocationBookings> = result.extract()?;
 
         Ok(bookings)
@@ -94,18 +90,17 @@ pub async fn scrape_rta_timeslots(
     let proxies = settings.proxies.clone();
     let num_rotations = (proxies.len() + parallel_browsers - 1) / parallel_browsers;
 
-    // Split proxies into rotation sets
+    // rotation sets
     let proxy_sets: Vec<Vec<String>> = proxies
         .chunks(parallel_browsers)
         .map(|chunk| chunk.to_vec())
         .collect();
 
-    // Split locations into randomized groups
+    // randomize location groups
     let location_groups = split_locations_into_groups(locations.clone(), parallel_browsers);
 
     let all_bookings = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
 
-    // Rotate through proxy sets
     for (rotation_idx, proxy_set) in proxy_sets.iter().enumerate() {
         log::info!(
             "Starting rotation {}/{} with {} proxies",
@@ -114,13 +109,11 @@ pub async fn scrape_rta_timeslots(
             proxy_set.len()
         );
 
-        // Prepare tasks for this rotation
         let mut handles = Vec::new();
 
         for (group_idx, (location_group, proxy)) in
             location_groups.iter().zip(proxy_set.iter()).enumerate()
         {
-            // Filter out already-scraped locations
             let already_scraped = all_bookings.lock().await;
             let remaining_locations: Vec<String> = location_group
                 .iter()
@@ -149,7 +142,7 @@ pub async fn scrape_rta_timeslots(
                 remaining_locations.len()
             );
 
-            // Spawn blocking task for each browser
+            // start
             let handle = tokio::task::spawn_blocking(move || {
                 let result = scrape_single_group(
                     remaining_locations,
@@ -167,7 +160,7 @@ pub async fn scrape_rta_timeslots(
             handles.push(handle);
         }
 
-        // Wait for all parallel browsers to complete
+        // wait for finish
         for handle in handles {
             match handle.await {
                 Ok((group_idx, proxy, result)) => match result {
@@ -191,7 +184,6 @@ pub async fn scrape_rta_timeslots(
             }
         }
 
-        // Check progress
         let scraped_count = all_bookings.lock().await.len();
         let total_count = locations.len();
         log::info!(
