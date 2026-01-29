@@ -15,7 +15,6 @@ def random_sleep(min_ms: int, max_ms: int):
 
 
 async def _type_like_human(page, selector: str, text: str, min_delay_ms: int = 30, max_delay_ms: int = 90):
-    """Type text character by character with random delays."""
     element = await page.wait_for_selector(selector, timeout=30000)
     await element.click()
     for char in text:
@@ -32,13 +31,11 @@ async def _scrape_with_page(
     timeout_ms: int,
     group_idx: int,
 ) -> dict:
-    """Scrape locations using an already-opened page."""
     location_bookings = {}
     
     await page.goto("https://www.myrta.com/wps/portal/extvp/myrta/login/")
     await page.wait_for_timeout(random.randint(500, 1000))
 
-    # Login
     await _type_like_human(page, "#widget_cardNumber", username)
     await page.wait_for_timeout(random.randint(150, 350))
 
@@ -86,7 +83,6 @@ async def _scrape_with_page(
             await page.click("#nextButton")
             await page.wait_for_timeout(random.randint(500, 1000))
 
-            # Try clicking earliest time button if available
             try:
                 earliest_btn = await page.query_selector("#getEarliestTime")
                 if earliest_btn and await earliest_btn.is_visible():
@@ -97,7 +93,6 @@ async def _scrape_with_page(
             
             await page.wait_for_timeout(random.randint(500, 1250))
 
-            # Get timeslots from JavaScript
             timeslots = await page.evaluate("() => window.timeslots")
             
             next_available_date = None
@@ -159,36 +154,36 @@ def _scrape_single_group(
     proxy: str,
     group_idx: int,
 ) -> dict:
-    """Scrape a single group of locations with one browser instance."""
     import asyncio
     
     logger.info(f"Group {group_idx}: Starting browser with proxy {proxy} for {len(locations)} locations")
     
+    result_holder = {"bookings": {}}
+    
+    async def page_action(page):
+        result_holder["bookings"] = await _scrape_with_page(
+            page,
+            locations,
+            username,
+            password,
+            have_booking,
+            timeout_ms,
+            group_idx,
+        )
+    
     async def run():
         fetcher = StealthyFetcher()
-        
-        # Parse proxy (format: host:port)
         proxy_config = {"server": f"http://{proxy}"} if proxy else None
         
-        page = await fetcher.async_fetch(
+        await fetcher.async_fetch(
             "https://www.myrta.com/wps/portal/extvp/myrta/login/",
             headless=headless,
             network_idle=True,
             proxy=proxy_config,
+            page_action=page_action,
         )
         
-        try:
-            return await _scrape_with_page(
-                page.page,
-                locations,
-                username,
-                password,
-                have_booking,
-                timeout_ms,
-                group_idx,
-            )
-        finally:
-            await page.page.context.browser.close()
+        return result_holder["bookings"]
     
     return asyncio.run(run())
 
@@ -204,23 +199,6 @@ def scrape_rta_timeslots_parallel(
     proxies: list,
     parallel_browsers: int,
 ) -> dict:
-    """
-    Scrape locations using multiple browser instances in parallel.
-    
-    Args:
-        locations: List of location IDs to scrape
-        headless: Whether to run browsers in headless mode
-        username: Login username
-        password: Login password
-        have_booking: Whether user has existing booking
-        timeout_ms: Selenium element timeout in ms
-        polling_ms: Selenium polling interval in ms
-        proxies: List of proxy addresses
-        parallel_browsers: Number of parallel browser instances to use
-    
-    Returns:
-        Dictionary mapping location IDs to their booking data
-    """
     if not locations:
         return {}
     
@@ -228,17 +206,14 @@ def scrape_rta_timeslots_parallel(
         logger.error("No proxies provided")
         return {}
     
-    # Shuffle locations for randomization
     shuffled_locations = locations.copy()
     random.shuffle(shuffled_locations)
     
-    # Split locations into groups (one per parallel browser)
     num_groups = min(parallel_browsers, len(proxies), len(locations))
     location_groups = [[] for _ in range(num_groups)]
     for i, loc in enumerate(shuffled_locations):
         location_groups[i % num_groups].append(loc)
     
-    # Use first N proxies for this batch
     active_proxies = proxies[:num_groups]
     
     all_bookings = {}
