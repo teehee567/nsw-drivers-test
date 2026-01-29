@@ -2,13 +2,13 @@ use pyo3::prelude::*;
 use pyo3::types::PyModule;
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::sync::Arc;
 
 use super::shared_booking::LocationBookings;
 use crate::settings::Settings;
 
-const SCRAPER_PY: &CStr = c"scraper.py";
+const SCRAPER_PY: &str = include_str!("scraper.py");
 
 #[derive(Debug)]
 pub struct ScrapeError(String);
@@ -61,7 +61,8 @@ fn scrape_single_group(
     Python::with_gil(|py| {
         let _ = pyo3_log::try_init();
 
-        let scraper_module = PyModule::from_code(py, SCRAPER_PY, c"scraper.py", c"scraper")?;
+        let code = CString::new(SCRAPER_PY).expect("Failed to create CString from scraper code");
+        let scraper_module = PyModule::from_code(py, &code, c"scraper.py", c"scraper")?;
 
         let scrape_fn = scraper_module.getattr("scrape_rta_timeslots")?;
 
