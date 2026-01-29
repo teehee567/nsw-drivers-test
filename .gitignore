@@ -10,9 +10,12 @@ test-results/
 playwright-report/
 playwright/.cache/
 
+__pycache__/
+*.py[codz]
+
 temp/
 
-**/.env
+**/*.env
 
 .DS_Store
 

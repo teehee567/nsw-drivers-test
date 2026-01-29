@@ -41,7 +41,6 @@ impl Settings {
         settings.password = parse_env_var(&settings.password)?;
         settings.proxy_path = parse_env_var(&settings.proxy_path)?;
 
-        // Load proxies from file
         let proxy_contents = std::fs::read_to_string(&settings.proxy_path)
             .map_err(|e| format!("Failed to read proxy file '{}': {}", settings.proxy_path, e))?;
         settings.proxies = proxy_contents
