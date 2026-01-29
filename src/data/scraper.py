@@ -131,7 +131,7 @@ async def _scrape_with_page(
                 "next_available_date": next_available_date,
             }
             
-            await page.wait_for_timeout(random.randint(30000, 150000))
+            await page.wait_for_timeout(random.randint(1500, 3000))
             await page.click("#anotherLocationLink")
             
         except Exception as e:
