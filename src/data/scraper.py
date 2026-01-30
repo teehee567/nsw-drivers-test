@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from scrapling import StealthyFetcher
 
 logging.getLogger().setLevel(0)
-logging.getLogger("scrapling").setLevel(logging.DEBUG)
+logging.getLogger("scrapling").setLevel(logging.WARNING)
 
 def random_sleep(min_ms: int, max_ms: int):
     duration = random.randint(min_ms, max_ms) / 1000.0
