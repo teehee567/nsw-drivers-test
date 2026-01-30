@@ -33,7 +33,7 @@ pub struct LocationDetailBookingResponse {
     pub etag: String,
 }
 
-#[server(GetBookings)]
+#[server(name = GetBookings, endpoint = "internalbWF5b2Zmbm9vbmdy")]
 pub async fn get_location_bookings(
     client_etag: String,
 ) -> Result<Option<BookingResponse>, ServerFnError> {
@@ -75,7 +75,7 @@ pub async fn get_location_bookings(
     }))
 }
 
-#[server(GetLocationDetails)]
+#[server(name = GetLocationDetails, endpoint = "internalc2hlbHRlcmVuZHF1")]
 pub async fn get_location_details(
     location_id: String,
     client_etag: String,
