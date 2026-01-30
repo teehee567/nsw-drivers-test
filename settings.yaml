@@ -10,3 +10,4 @@ scrape_refresh_time_min: 120
 scraping_enabled: true
 parallel_browsers: 4
 proxy_path: "${PROXY_PATH}"
+webhook_url: "${WEBHOOK_URL}"

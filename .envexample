@@ -1,2 +1,5 @@
 USERNAME=12345678
 PASSWORD=password
+# /app is the working directory inside the Docker container
+PROXY_PATH=/app/data/proxies.env
+WEBHOOK_URL="https://discord.com/api/webhooks/your_webhook_id/your_webhook_token"

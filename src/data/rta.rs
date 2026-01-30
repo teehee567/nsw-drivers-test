@@ -3,10 +3,26 @@ use pyo3::types::PyModule;
 use std::collections::HashMap;
 use std::ffi::CString;
 
+use super::discord::notify_403_blocked;
 use super::shared_booking::LocationBookings;
 use crate::settings::Settings;
 
 const SCRAPER_PY: &str = include_str!("scraper.py");
+
+#[derive(Debug, FromPyObject)]
+#[pyo3(from_item_all)]
+pub struct BlockedProxy {
+    pub proxy: String,
+    pub status_code: u16,
+    pub response_body: String,
+}
+
+#[derive(Debug, FromPyObject)]
+#[pyo3(from_item_all)]
+struct ScrapeResult {
+    bookings: HashMap<String, LocationBookings>,
+    blocked_proxies: Vec<BlockedProxy>,
+}
 
 #[derive(Debug)]
 pub struct ScrapeError(String);
@@ -41,7 +57,7 @@ fn scrape_single_group(
     polling_ms: u64,
     proxies: Vec<String>,
     parallel_browsers: usize,
-) -> Result<HashMap<String, LocationBookings>, ScrapeError> {
+) -> Result<ScrapeResult, ScrapeError> {
     pyo3_pylogger::register("rta_scraper");
 
     Python::with_gil(|py| {
@@ -63,9 +79,9 @@ fn scrape_single_group(
             parallel_browsers,
         ))?;
 
-        let bookings: HashMap<String, LocationBookings> = result.extract()?;
+        let scrape_result: ScrapeResult = result.extract()?;
 
-        Ok(bookings)
+        Ok(scrape_result)
     })
 }
 
@@ -104,7 +120,20 @@ pub async fn scrape_rta_timeslots(
     })
     .await??;
     
-    log::info!("Scraping complete: {} locations scraped.", result.len());
+    if let Some(webhook_url) = &settings.webhook_url {
+        for blocked in &result.blocked_proxies {
+            if let Err(e) = notify_403_blocked(
+                webhook_url,
+                &blocked.proxy,
+                blocked.status_code,
+                &blocked.response_body,
+            ).await {
+                log::error!("Failed to send Discord notification: {}", e);
+            }
+        }
+    }
+    
+    log::info!("Scraping complete: {} locations scraped.", result.bookings.len());
 
-    Ok(result)
+    Ok(result.bookings)
 }

@@ -165,27 +165,23 @@ def _scrape_single_group(
     
     async def page_action(page):
         result_holder["bookings"] = await _scrape_with_page(
-            page,
-            locations,
-            username,
-            password,
-            have_booking,
-            timeout_ms,
-            group_idx,
-        )
+            page, locations, username, password, have_booking, timeout_ms, group_idx)
     
     async def run():
         proxy_config = {"server": f"http://{proxy}"} if proxy else None
-        
-        await StealthyFetcher.async_fetch(
-            "https://www.myrta.com/wps/portal/extvp/myrta/login/",
-            headless=headless,
-            network_idle=True,
-            proxy=proxy_config,
-            page_action=page_action,
-        )
-        
-        return result_holder["bookings"]
+        try:
+            response = await StealthyFetcher.async_fetch(
+                "https://www.myrta.com/wps/portal/extvp/myrta/login/",
+                headless=headless, network_idle=True, proxy=proxy_config, page_action=page_action)
+            
+            if response and getattr(response, 'status', None) == 403:
+                body = getattr(response, 'text', None) or getattr(response, 'body', '') or ''
+                return {"bookings": {}, "blocked": {"proxy": proxy, "status_code": 403, "response_body": str(body)[:2000]}}
+        except Exception as e:
+            if "403" in str(e).lower():
+                return {"bookings": {}, "blocked": {"proxy": proxy, "status_code": 403, "response_body": str(e)[:2000]}}
+            raise
+        return {"bookings": result_holder["bookings"], "blocked": None}
     
     return asyncio.run(run())
 
@@ -202,11 +198,11 @@ def scrape_rta_timeslots_parallel(
     parallel_browsers: int,
 ) -> dict:
     if not locations:
-        return {}
+        return {"bookings": {}, "blocked_proxies": []}
     
     if not proxies:
         logging.error("No proxies provided")
-        return {}
+        return {"bookings": {}, "blocked_proxies": []}
     
     shuffled_locations = locations.copy()
     random.shuffle(shuffled_locations)
@@ -219,6 +215,7 @@ def scrape_rta_timeslots_parallel(
     active_proxies = proxies[:num_groups]
     
     all_bookings = {}
+    blocked_proxies = []
     
     logging.info(f"Starting parallel scrape with {num_groups} browsers for {len(locations)} locations")
     
@@ -247,11 +244,18 @@ def scrape_rta_timeslots_parallel(
             group_idx, proxy = futures[future]
             try:
                 result = future.result()
-                all_bookings.update(result)
-                logging.debug(f"Group {group_idx} with proxy {proxy} completed. Got {len(result)} locations.")
+                
+                # Check if this proxy was blocked
+                if result.get("blocked"):
+                    blocked_proxies.append(result["blocked"])
+                    logging.warning(f"Group {group_idx} with proxy {proxy} was blocked (403)")
+                else:
+                    bookings = result.get("bookings", {})
+                    all_bookings.update(bookings)
+                    logging.debug(f"Group {group_idx} with proxy {proxy} completed. Got {len(bookings)} locations.")
             except Exception as e:
                 logging.error(f"Group {group_idx} with proxy {proxy} failed: {e}")
     
-    logging.info(f"Parallel scrape complete: {len(all_bookings)}/{len(locations)} locations scraped.")
+    logging.info(f"Parallel scrape complete: {len(all_bookings)}/{len(locations)} locations scraped. {len(blocked_proxies)} proxies blocked.")
     
-    return all_bookings
+    return {"bookings": all_bookings, "blocked_proxies": blocked_proxies}

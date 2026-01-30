@@ -15,11 +15,14 @@ pub struct Settings {
     pub selenium_driver_url: String,
     pub selenium_element_timout: u64,
     pub selenium_element_polling: u64,
+
     pub retries: u64,
     pub scrape_refresh_time_min: u64,
     pub proxy_path: String,
     pub parallel_browsers: usize,
     pub scraping_enabled: bool,
+    #[serde(default)]
+    pub webhook_url: Option<String>,
     #[serde(skip)]
     pub proxies: Vec<String>,
 }
@@ -37,6 +40,10 @@ impl Settings {
         settings.username = parse_env_var(&settings.username)?;
         settings.password = parse_env_var(&settings.password)?;
         settings.proxy_path = parse_env_var(&settings.proxy_path)?;
+        
+        if let Some(ref webhook_url) = settings.webhook_url {
+            settings.webhook_url = Some(parse_env_var(webhook_url)?);
+        }
 
         let proxy_contents = std::fs::read_to_string(&settings.proxy_path)
             .map_err(|e| format!("Failed to read proxy file '{}': {}", settings.proxy_path, e))?;
