@@ -7,13 +7,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from scrapling import StealthyFetcher
 
-# Suppress scrapling logs
-logging.getLogger("scrapling").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
-
-logger = logging.getLogger("rta_scraper")
-
+logging.getLogger().setLevel(0)
+logging.getLogger("scrapling").setLevel(logging.DEBUG)
 
 def random_sleep(min_ms: int, max_ms: int):
     duration = random.randint(min_ms, max_ms) / 1000.0
@@ -39,7 +34,6 @@ async def _scrape_with_page(
 ) -> dict:
     location_bookings = {}
     
-    await page.goto("https://www.myrta.com/wps/portal/extvp/myrta/login/")
     await page.wait_for_timeout(random.randint(1000, 2000))
 
     await _type_like_human(page, "#widget_cardNumber", username)
@@ -123,7 +117,7 @@ async def _scrape_with_page(
                         "startTime": slot.get("startTime", ""),
                     })
             
-            logger.info(f"Group {group_idx}: Parsed {len(slots)} slots for {location}. Next available: {next_available_date}")
+            logging.trace(f"Group {group_idx}: Parsed {len(slots)} slots for {location}. Next available: {next_available_date}")
             
             location_bookings[location] = {
                 "location": location,
@@ -135,21 +129,21 @@ async def _scrape_with_page(
             await page.click("#anotherLocationLink")
             
         except Exception as e:
-            logger.error(f"Group {group_idx}: Failed processing location {location}: {e}")
+            logging.error(f"Group {group_idx}: Failed processing location {location}: {e}")
 
             try:
                 another_link = await page.query_selector("#anotherLocationLink")
                 if another_link and await another_link.is_visible():
                     await another_link.click()
-                    logger.info(f"Group {group_idx}: Recovery click succeeded.")
+                    logging.info(f"Group {group_idx}: Recovery click succeeded.")
             except:
-                logger.warning(f"Group {group_idx}: Recovery failed.")
+                logging.warning(f"Group {group_idx}: Recovery failed.")
             await page.wait_for_timeout(random.randint(2000, 3000))
             continue
         
         await page.wait_for_timeout(random.randint(1500, 3000))
     
-    logger.info(f"Group {group_idx}: Finished scraping {len(location_bookings)} locations.")
+    logging.debug(f"Group {group_idx}: Finished scraping {len(location_bookings)} locations.")
     
     return location_bookings
 
@@ -165,7 +159,7 @@ def _scrape_single_group(
     proxy: str,
     group_idx: int,
 ) -> dict:
-    logger.info(f"Group {group_idx}: Starting browser with proxy {proxy} for {len(locations)} locations")
+    logging.debug(f"Group {group_idx}: Starting browser with proxy {proxy} for {len(locations)} locations")
     
     result_holder = {"bookings": {}}
     
@@ -181,8 +175,9 @@ def _scrape_single_group(
         )
     
     async def run():
-        fetcher = StealthyFetcher()
         proxy_config = {"server": f"http://{proxy}"} if proxy else None
+        
+        fetcher = StealthyFetcher()
         
         await fetcher.async_fetch(
             "https://www.myrta.com/wps/portal/extvp/myrta/login/",
@@ -212,7 +207,7 @@ def scrape_rta_timeslots_parallel(
         return {}
     
     if not proxies:
-        logger.error("No proxies provided")
+        logging.error("No proxies provided")
         return {}
     
     shuffled_locations = locations.copy()
@@ -227,7 +222,7 @@ def scrape_rta_timeslots_parallel(
     
     all_bookings = {}
     
-    logger.info(f"Starting parallel scrape with {num_groups} browsers for {len(locations)} locations")
+    logging.info(f"Starting parallel scrape with {num_groups} browsers for {len(locations)} locations")
     
     with ThreadPoolExecutor(max_workers=num_groups) as executor:
         futures = {}
@@ -255,10 +250,10 @@ def scrape_rta_timeslots_parallel(
             try:
                 result = future.result()
                 all_bookings.update(result)
-                logger.info(f"Group {group_idx} with proxy {proxy} completed. Got {len(result)} locations.")
+                logging.debug(f"Group {group_idx} with proxy {proxy} completed. Got {len(result)} locations.")
             except Exception as e:
-                logger.error(f"Group {group_idx} with proxy {proxy} failed: {e}")
+                logging.error(f"Group {group_idx} with proxy {proxy} failed: {e}")
     
-    logger.info(f"Parallel scrape complete: {len(all_bookings)}/{len(locations)} locations scraped.")
+    logging.info(f"Parallel scrape complete: {len(all_bookings)}/{len(locations)} locations scraped.")
     
     return all_bookings

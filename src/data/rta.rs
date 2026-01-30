@@ -42,8 +42,9 @@ fn scrape_single_group(
     proxies: Vec<String>,
     parallel_browsers: usize,
 ) -> Result<HashMap<String, LocationBookings>, ScrapeError> {
+    pyo3_pylogger::register("rta_scraper");
+
     Python::with_gil(|py| {
-        let _ = pyo3_log::try_init();
 
         let code = CString::new(SCRAPER_PY).expect("Failed to create CString from scraper code");
         let scraper_module = PyModule::from_code(py, &code, c"scraper.py", c"scraper")?;
