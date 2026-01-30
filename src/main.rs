@@ -5,10 +5,10 @@ use std::io::Read;
 use axum::Router;
 use leptos::prelude::*;
 use leptos_axum::{generate_route_list, LeptosRoutes};
-use nsw_closest_display::app::{shell, App};
-use nsw_closest_display::data::booking::BookingManager;
-use nsw_closest_display::data::location::Location;
-use nsw_closest_display::settings::Settings;
+use nsw_closest_display_lib::app::{shell, App};
+use nsw_closest_display_lib::data::booking::BookingManager;
+use nsw_closest_display_lib::data::location::Location;
+use nsw_closest_display_lib::settings::Settings;
 
 // FIX: HACKY
 fn get_location_names() -> Vec<String> {

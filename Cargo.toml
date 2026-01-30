@@ -4,7 +4,12 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
+name = "nsw_closest_display_lib"
 crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "nsw-closest-display"
+path = "src/main.rs"
 
 [dependencies]
 leptos = { version = "0.8", features = ["nightly"] }
@@ -60,6 +65,12 @@ panic = "abort"
 [package.metadata.leptos]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name
 output-name = "nsw-closest-display-leptos"
+
+# Library name (required when lib name differs from package name)
+lib-name = "nsw_closest_display_lib"
+
+# Binary name
+bin-name = "nsw-closest-display"
 
 # The site root folder is where cargo-leptos generate all output. WARNING: all content of this folder will be erased on a rebuild. Use it in your server setup.
 site-root = "target/site"
