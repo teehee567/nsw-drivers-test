@@ -177,9 +177,7 @@ def _scrape_single_group(
     async def run():
         proxy_config = {"server": f"http://{proxy}"} if proxy else None
         
-        fetcher = StealthyFetcher()
-        
-        await fetcher.async_fetch(
+        await StealthyFetcher.async_fetch(
             "https://www.myrta.com/wps/portal/extvp/myrta/login/",
             headless=headless,
             network_idle=True,

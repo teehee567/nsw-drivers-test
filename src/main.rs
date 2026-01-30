@@ -1,7 +1,6 @@
 #![recursion_limit = "512"]
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
 
 use axum::Router;
 use leptos::prelude::*;
@@ -10,7 +9,6 @@ use nsw_closest_display::app::{shell, App};
 use nsw_closest_display::data::booking::BookingManager;
 use nsw_closest_display::data::location::Location;
 use nsw_closest_display::settings::Settings;
-use serde::Deserialize;
 
 // FIX: HACKY
 fn get_location_names() -> Vec<String> {
