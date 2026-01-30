@@ -8,6 +8,7 @@ use std::path::Path;
 use std::sync::{Arc, OnceLock, RwLock};
 use std::time::{Duration, Instant};
 
+use super::discord::notify_scrape_blocked;
 use super::shared_booking::{BookingData, LocationBookings, TimeSlot};
 use crate::settings::Settings;
 
@@ -221,6 +222,18 @@ impl BookingManager {
                             remaining_locations.len(),
                             max_retries
                         );
+                        
+                        // notify when failed
+                        if let Some(webhook_url) = &settings.webhook_url {
+                            if let Err(e) = notify_scrape_blocked(
+                                webhook_url,
+                                remaining_locations.len(),
+                                max_retries,
+                            ).await {
+                                error!("Failed to send Discord blocked notification: {}", e);
+                            }
+                        }
+                        
                         if final_results.is_empty() {
                             error!("No data was successfully scraped. No update will be performed.");
                             return;

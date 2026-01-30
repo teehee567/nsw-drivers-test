@@ -26,3 +26,28 @@ pub async fn notify_403_blocked(
     log::info!("Discord notification sent for blocked proxy: {}", proxy);
     Ok(())
 }
+
+pub async fn notify_scrape_blocked(
+    webhook_url: &str,
+    failed_locations: usize,
+    max_retries: u64,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let ts = chrono::Utc::now().to_rfc3339();
+    
+    let payload = format!(
+        r#"{{"content":null,"embeds":[{{"title":"Scraping Blocked","description":"@everyone","color":15158332,"fields":[{{"name":"Status","value":"Scraping failed after {} attempts"}},{{"name":"Failed Locations","value":"{}"}}],"timestamp":"{}"}}],"attachments":[]}}"
+        "#,
+        max_retries, failed_locations, ts
+    );
+
+    reqwest::Client::new()
+        .post(webhook_url)
+        .header("Content-Type", "application/json")
+        .body(payload)
+        .send()
+        .await?
+        .error_for_status()?;
+
+    log::info!("Discord notification sent for scraping blocked after {} retries", max_retries);
+    Ok(())
+}
