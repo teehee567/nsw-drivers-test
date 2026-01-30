@@ -117,7 +117,7 @@ async def _scrape_with_page(
                         "startTime": slot.get("startTime", ""),
                     })
             
-            logging.trace(f"Group {group_idx}: Parsed {len(slots)} slots for {location}. Next available: {next_available_date}")
+            logging.debug(f"Group {group_idx}: Parsed {len(slots)} slots for {location}. Next available: {next_available_date}")
             
             location_bookings[location] = {
                 "location": location,
