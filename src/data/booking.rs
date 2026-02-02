@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::hash::{DefaultHasher, Hasher};
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock, RwLock};
 use std::time::{Duration, Instant};
 
@@ -14,6 +15,7 @@ use crate::settings::Settings;
 
 static BOOKING_DATA: OnceLock<Arc<RwLock<(BookingData, String)>>> = OnceLock::new();
 static BACKGROUND_RUNNING: OnceLock<Arc<RwLock<bool>>> = OnceLock::new();
+static PROXY_ROTATION_INDEX: AtomicUsize = AtomicUsize::new(0);
 
 fn get_booking_data() -> &'static Arc<RwLock<(BookingData, String)>> {
     BOOKING_DATA.get_or_init(|| Arc::new(RwLock::new((BookingData::default(), String::new()))))
@@ -162,9 +164,16 @@ impl BookingManager {
         *running = false;
     }
 
-    pub async fn perform_update(locations: Vec<String>, file_path: &str, settings: Settings) {
+    pub async fn perform_update(locations: Vec<String>, file_path: &str, mut settings: Settings) {
         let start_time = Instant::now();
         let max_retries = settings.retries;
+
+        // rotate proxies
+        // trash simple probably change later (im not going ot)
+        if !settings.proxies.is_empty() {
+            let index = PROXY_ROTATION_INDEX.fetch_add(settings.parallel_browsers, AtomicOrdering::Relaxed);
+            settings.proxies.rotate_left(index % settings.proxies.len());
+        }
 
         let mut final_results: HashMap<String, LocationBookings> = HashMap::new();
         let mut remaining_locations = locations.clone();
