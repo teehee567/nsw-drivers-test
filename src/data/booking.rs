@@ -172,7 +172,8 @@ impl BookingManager {
         // trash simple probably change later (im not going ot)
         if !settings.proxies.is_empty() {
             let index = PROXY_ROTATION_INDEX.fetch_add(settings.parallel_browsers, AtomicOrdering::Relaxed);
-            settings.proxies.rotate_left(index % settings.proxies.len());
+            let len = settings.proxies.len();
+            settings.proxies.rotate_left(index % len);
         }
 
         let mut final_results: HashMap<String, LocationBookings> = HashMap::new();
