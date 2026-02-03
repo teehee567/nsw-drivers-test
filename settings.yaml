@@ -9,3 +9,4 @@ scraping_enabled: true
 parallel_browsers: 4
 proxy_path: "${PROXY_PATH}"
 webhook_url: "${WEBHOOK_URL}"
+initial_delay_hours: 0

@@ -19,6 +19,8 @@ pub struct Settings {
     pub scraping_enabled: bool,
     #[serde(default)]
     pub webhook_url: Option<String>,
+    #[serde(default)]
+    pub initial_delay_hours: f64,
 }
 
 impl Settings {
@@ -37,6 +39,12 @@ impl Settings {
         
         if let Some(ref webhook_url) = settings.webhook_url {
             settings.webhook_url = Some(parse_env_var(webhook_url)?);
+        }
+
+        if let Ok(delay_str) = env::var("INITIAL_DELAY_HOURS") {
+            if let Ok(delay) = delay_str.parse::<f64>() {
+                settings.initial_delay_hours = delay;
+            }
         }
 
         Ok(settings)

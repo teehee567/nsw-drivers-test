@@ -8,5 +8,6 @@ services:
       - .env
     environment:
       - RUST_LOG=info
+      - INITIAL_DELAY_HOURS=${INITIAL_DELAY_HOURS:-0}
     volumes:
       - ./data:/app/data

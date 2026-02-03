@@ -150,6 +150,12 @@ impl BookingManager {
         tokio::spawn(async move {
             let update_interval = Duration::from_secs(settings.scrape_refresh_time_min * 60);
 
+            if settings.initial_delay_hours > 0.0 {
+                let delay_secs = (settings.initial_delay_hours * 3600.0) as u64;
+                info!("Delaying first background update by {} hours ({} seconds)", settings.initial_delay_hours, delay_secs);
+                tokio::time::sleep(Duration::from_secs(delay_secs)).await;
+            }
+
             while *running_status.read().unwrap() {
                 BookingManager::perform_update(locations.clone(), &file_path, settings.clone())
                     .await;
