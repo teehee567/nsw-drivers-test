@@ -15,6 +15,18 @@ def random_sleep(min_ms: int, max_ms: int):
     time.sleep(duration)
 
 
+async def _wait_and_click(page, selector: str, timeout_ms: int, min_delay: int, max_delay: int):
+    await page.wait_for_timeout(random.randint(min_delay, max_delay))
+    element = await page.wait_for_selector(selector, timeout=timeout_ms)
+    await element.click()
+
+
+async def _wait_and_select(page, selector: str, value: str, timeout_ms: int, min_delay: int, max_delay: int):
+    await page.wait_for_timeout(random.randint(min_delay, max_delay))
+    await page.wait_for_selector(selector, timeout=timeout_ms)
+    await page.select_option(selector, value=value)
+
+
 async def _type_like_human(page, selector: str, text: str, min_delay_ms: int = 30, max_delay_ms: int = 120):
     element = await page.wait_for_selector(selector, timeout=30000)
     await element.click()
@@ -40,48 +52,25 @@ async def _scrape_with_page(
     await page.wait_for_timeout(random.randint(300, 700))
 
     await _type_like_human(page, "#widget_password", password)
-    await page.wait_for_timeout(random.randint(400, 800))
 
-    await page.click("#nextButton")
-    await page.wait_for_timeout(random.randint(2000, 4000))
+    await _wait_and_click(page, "#nextButton", timeout_ms, 400, 800)
     
     if have_booking:
-        await page.click("//*[text()=\"Manage booking\"]")
-        await page.wait_for_timeout(random.randint(1500, 2500))
-        
-        await page.click("#changeLocationButton")
-        await page.wait_for_timeout(random.randint(1000, 2000))
+        await _wait_and_click(page, "//*[text()=\"Manage booking\"]", timeout_ms, 2000, 4000)
+        await _wait_and_click(page, "#changeLocationButton", timeout_ms, 1500, 2500)
     else:
-        await page.click("text=Book test")
-        await page.wait_for_timeout(random.randint(1500, 2500))
-        
-        await page.click("#CAR")
-        await page.wait_for_timeout(random.randint(500, 1000))
-        
-        await page.click("fieldset#DC span.rms_testItemResult")
-        await page.wait_for_timeout(random.randint(500, 1000))
-        
-        await page.click("#nextButton")
-        await page.wait_for_timeout(random.randint(1500, 2500))
-        
-        await page.click("#checkTerms")
-        await page.wait_for_timeout(random.randint(500, 1000))
-        
-        await page.click("#nextButton")
-        await page.wait_for_timeout(random.randint(1000, 2000))
+        await _wait_and_click(page, "text=Book test", timeout_ms, 2000, 4000)
+        await _wait_and_click(page, "#CAR", timeout_ms, 1500, 2500)
+        await _wait_and_click(page, "fieldset#DC span.rms_testItemResult", timeout_ms, 500, 1000)
+        await _wait_and_click(page, "#nextButton", timeout_ms, 500, 1000)
+        await _wait_and_click(page, "#checkTerms", timeout_ms, 1500, 2500)
+        await _wait_and_click(page, "#nextButton", timeout_ms, 500, 1000)
 
     for location in locations:
         try:
-            await page.wait_for_timeout(random.randint(1000, 2000))
-
-            await page.click("#rms_batLocLocSel")
-            await page.wait_for_timeout(random.randint(500, 1000))
-
-            await page.select_option("#rms_batLocationSelect2", value=location)
-            await page.wait_for_timeout(random.randint(2500, 4000))
-
-            await page.click("#nextButton")
-            await page.wait_for_timeout(random.randint(1000, 2000))
+            await _wait_and_click(page, "#rms_batLocLocSel", timeout_ms, 1000, 2000)
+            await _wait_and_select(page, "#rms_batLocationSelect2", location, timeout_ms, 500, 1000)
+            await _wait_and_click(page, "#nextButton", timeout_ms, 2500, 4000)
 
             try:
                 earliest_btn = await page.query_selector("#getEarliestTime")
@@ -125,8 +114,7 @@ async def _scrape_with_page(
                 "next_available_date": next_available_date,
             }
             
-            await page.wait_for_timeout(random.randint(1500, 3000))
-            await page.click("#anotherLocationLink")
+            await _wait_and_click(page, "#anotherLocationLink", timeout_ms, 1500, 3000)
             
         except Exception as e:
             logging.error(f"Group {group_idx}: Failed processing location {location}: {e}")
