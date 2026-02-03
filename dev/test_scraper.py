@@ -71,7 +71,6 @@ def main():
             password=password,
             have_booking=have_booking,
             timeout_ms=timeout_ms,
-            polling_ms=polling_ms,
             proxies=proxies,
             parallel_browsers=1,
         )
