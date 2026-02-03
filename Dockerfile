@@ -33,6 +33,9 @@ RUN apt-get update -y && apt-get install -y \
 # Install scrapling with all dependencies
 RUN pip3 install --break-system-packages scrapling[all]
 
+# Install browser and fingerprint dependencies
+RUN scrapling install
+
 # Install browser binaries for patchright
 RUN patchright install chromium
 
