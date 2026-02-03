@@ -10,11 +10,6 @@ from scrapling import StealthyFetcher
 logging.getLogger().setLevel(0)
 logging.getLogger("scrapling").setLevel(logging.WARNING)
 
-def random_sleep(min_ms: int, max_ms: int):
-    duration = random.randint(min_ms, max_ms) / 1000.0
-    time.sleep(duration)
-
-
 async def _wait_and_click(page, selector: str, timeout_ms: int, min_delay: int, max_delay: int):
     await page.wait_for_timeout(random.randint(min_delay, max_delay))
     element = await page.wait_for_selector(selector, timeout=timeout_ms)
@@ -27,12 +22,12 @@ async def _wait_and_select(page, selector: str, value: str, timeout_ms: int, min
     await page.select_option(selector, value=value)
 
 
-async def _type_like_human(page, selector: str, text: str, min_delay_ms: int = 30, max_delay_ms: int = 120):
+async def _type_like_human(page, selector: str, text: str, min_delay: int = 30, max_delay: int = 120):
     element = await page.wait_for_selector(selector, timeout=30000)
     await element.click()
     for char in text:
         await page.keyboard.type(char)
-        await page.wait_for_timeout(random.randint(min_delay_ms, max_delay_ms))
+        await page.wait_for_timeout(random.randint(min_delay, max_delay))
 
 
 async def _scrape_with_page(

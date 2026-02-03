@@ -2,7 +2,7 @@ headless: true
 username: "${USERNAME}"
 password: "${PASSWORD}"
 have_booking: false
-element_timeout: 20000
+element_timeout: 30000
 retries: 4
 scrape_refresh_time_min: 120
 scraping_enabled: true
