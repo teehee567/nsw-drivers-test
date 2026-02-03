@@ -4,7 +4,7 @@ password: "${PASSWORD}"
 have_booking: false
 element_timeout: 30000
 retries: 4
-scrape_refresh_time_min: 120
+scrape_refresh_time_min: 240
 scraping_enabled: true
 parallel_browsers: 4
 proxy_path: "${PROXY_PATH}"

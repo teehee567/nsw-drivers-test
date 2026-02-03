@@ -86,8 +86,8 @@ fn scrape_single_group(
 pub async fn scrape_rta_timeslots(
     locations: Vec<String>,
     settings: &Settings,
+    proxies: Vec<String>,
 ) -> Result<HashMap<String, LocationBookings>, Box<dyn std::error::Error + Send + Sync>> {
-    let proxies = settings.proxies.clone();
     let parallel_browsers = settings.parallel_browsers;
     
     log::info!(
