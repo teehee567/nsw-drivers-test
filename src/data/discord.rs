@@ -12,10 +12,10 @@ pub async fn notify_403_blocked(
     let ts = Utc::now().to_rfc3339();
 
     let payload = json!({
-        "content": null,
+        "content": "@everyone",
         "embeds": [{
             "title": "Proxy Block Detected",
-            "description": "<@here>",
+            "description": "",
             "color": 5814783,
             "fields": [
                 {"name": "Proxy Ip", "value": proxy},
@@ -47,7 +47,7 @@ pub async fn notify_scrape_blocked(
     let ts = Utc::now().to_rfc3339();
 
     let payload = json!({
-        "content": null,
+        "content": "@everyone",
         "embeds": [{
             "title": "Scraping Blocked",
             "description": "<@here>",
