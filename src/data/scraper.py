@@ -161,6 +161,8 @@ def _scrape_single_group(
 ) -> dict:
     logging.debug(f"Group {group_idx}: Starting browser with proxy {proxy} for {len(locations)} locations")
     
+    time.sleep(random.uniform(1.0, 3.0) * group_idx)
+    
     result_holder = {"bookings": {}}
     
     async def page_action(page):
@@ -169,18 +171,13 @@ def _scrape_single_group(
     
     async def run():
         proxy_config = {"server": f"http://{proxy}"} if proxy else None
-        try:
-            response = await StealthyFetcher.async_fetch(
-                "https://www.myrta.com/wps/portal/extvp/myrta/login/",
-                headless=headless, network_idle=True, proxy=proxy_config, page_action=page_action)
-            
-            if response and getattr(response, 'status', None) == 403:
-                body = getattr(response, 'text', None) or getattr(response, 'body', '') or ''
-                return {"bookings": {}, "blocked": {"proxy": proxy, "status_code": 403, "response_body": str(body)[:2000]}}
-        except Exception as e:
-            if "403" in str(e).lower():
-                return {"bookings": {}, "blocked": {"proxy": proxy, "status_code": 403, "response_body": str(e)[:2000]}}
-            raise
+        response = await StealthyFetcher.async_fetch(
+            "https://www.myrta.com/wps/portal/extvp/myrta/login/",
+            headless=headless, network_idle=True, proxy=proxy_config, page_action=page_action)
+        
+        if response and getattr(response, 'status', None) == 403:
+            body = getattr(response, 'text', None) or getattr(response, 'body', '') or ''
+            return {"bookings": {}, "blocked": {"proxy": proxy, "status_code": 403, "response_body": str(body)[:2000]}}
         return {"bookings": result_holder["bookings"], "blocked": None}
     
     return asyncio.run(run())
@@ -217,7 +214,7 @@ def scrape_rta_timeslots_parallel(
     all_bookings = {}
     blocked_proxies = []
     
-    logging.info(f"Starting parallel scrape with {num_groups} browsers for {len(locations)} locations")
+    logging.info(f"Starting parallel scrape with {num_groups} browsers for {len(locations)} locations. Proxies: {active_proxies}")
     
     with ThreadPoolExecutor(max_workers=num_groups) as executor:
         futures = {}
