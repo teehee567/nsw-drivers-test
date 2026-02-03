@@ -54,7 +54,6 @@ fn scrape_single_group(
     password: String,
     have_booking: bool,
     timeout_ms: u64,
-    polling_ms: u64,
     proxies: Vec<String>,
     parallel_browsers: usize,
 ) -> Result<ScrapeResult, ScrapeError> {
@@ -74,7 +73,6 @@ fn scrape_single_group(
             password,
             have_booking,
             timeout_ms,
-            polling_ms,
             proxies,
             parallel_browsers,
         ))?;
@@ -102,8 +100,7 @@ pub async fn scrape_rta_timeslots(
     let username = settings.username.clone();
     let password = settings.password.clone();
     let have_booking = settings.have_booking;
-    let timeout_ms = settings.selenium_element_timout;
-    let polling_ms = settings.selenium_element_polling;
+    let timeout_ms = settings.element_timeout;
     
     let result = tokio::task::spawn_blocking(move || {
         scrape_single_group(
@@ -113,7 +110,6 @@ pub async fn scrape_rta_timeslots(
             password,
             have_booking,
             timeout_ms,
-            polling_ms,
             proxies,
             parallel_browsers,
         )

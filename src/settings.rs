@@ -11,11 +11,7 @@ pub struct Settings {
     pub username: String,
     pub password: String,
     pub have_booking: bool,
-    // lol not even used anymore but whatever
-    pub selenium_driver_url: String,
-    pub selenium_element_timout: u64,
-    pub selenium_element_polling: u64,
-
+    pub element_timeout: u64,
     pub retries: u64,
     pub scrape_refresh_time_min: u64,
     pub proxy_path: String,

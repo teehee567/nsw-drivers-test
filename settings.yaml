@@ -2,9 +2,7 @@ headless: true
 username: "${USERNAME}"
 password: "${PASSWORD}"
 have_booking: false
-selenium_driver_url: "http://localhost:57908"
-selenium_element_timout: 20000
-selenium_element_polling: 100
+element_timeout: 20000
 retries: 4
 scrape_refresh_time_min: 120
 scraping_enabled: true

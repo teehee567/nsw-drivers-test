@@ -155,7 +155,6 @@ def _scrape_single_group(
     password: str,
     have_booking: bool,
     timeout_ms: int,
-    polling_ms: int,
     proxy: str,
     group_idx: int,
 ) -> dict:
@@ -173,7 +172,11 @@ def _scrape_single_group(
         proxy_config = {"server": f"http://{proxy}"} if proxy else None
         response = await StealthyFetcher.async_fetch(
             "https://www.myrta.com/wps/portal/extvp/myrta/login/",
-            headless=headless, network_idle=True, proxy=proxy_config, page_action=page_action)
+            headless=headless, 
+            network_idle=True, 
+            proxy=proxy_config, 
+            page_action=page_action
+        )
         
         if response and getattr(response, 'status', None) == 403:
             body = getattr(response, 'text', None) or getattr(response, 'body', '') or ''
@@ -190,7 +193,6 @@ def scrape_rta_timeslots_parallel(
     password: str,
     have_booking: bool,
     timeout_ms: int,
-    polling_ms: int,
     proxies: list,
     parallel_browsers: int,
 ) -> dict:
@@ -231,7 +233,6 @@ def scrape_rta_timeslots_parallel(
                 password,
                 have_booking,
                 timeout_ms,
-                polling_ms,
                 proxy,
                 group_idx,
             )
