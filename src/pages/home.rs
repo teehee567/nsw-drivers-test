@@ -240,7 +240,7 @@ pub fn HomePage() -> impl IntoView {
         <div class="max-w-4xl mx-auto p-4">
             <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6" role="alert">
                 <strong class="font-bold">UP as of 29/01/2026: </strong>
-                <span class="block sm:inline">Currently up, refreshes every 2 hours, times will go down as i continue monitoring</span>
+                <span class="block sm:inline">Currently up, refreshes every 4 hours, times will go down as i continue monitoring</span>
                 <span class="block mt-2 text-sm text-green-600">"If you can, $1-$2 helps with server costs :)"</span>
             </div>
 

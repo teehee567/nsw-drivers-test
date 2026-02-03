@@ -19,8 +19,8 @@ pub struct Settings {
     pub scraping_enabled: bool,
     #[serde(default)]
     pub webhook_url: Option<String>,
-    #[serde(skip)]
-    pub proxies: Vec<String>,
+    #[serde(default)]
+    pub initial_delay_hours: f64,
 }
 
 impl Settings {
@@ -41,15 +41,41 @@ impl Settings {
             settings.webhook_url = Some(parse_env_var(webhook_url)?);
         }
 
-        let proxy_contents = std::fs::read_to_string(&settings.proxy_path)
-            .map_err(|e| format!("Failed to read proxy file '{}': {}", settings.proxy_path, e))?;
-        settings.proxies = proxy_contents
+        if let Ok(delay_str) = env::var("INITIAL_DELAY_HOURS") {
+            if let Ok(delay) = delay_str.parse::<f64>() {
+                settings.initial_delay_hours = delay;
+            }
+        }
+
+        Ok(settings)
+    }
+
+    pub fn read_proxies(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        let proxy_contents = std::fs::read_to_string(&self.proxy_path)
+            .map_err(|e| format!("Failed to read proxy file '{}': {}", self.proxy_path, e))?;
+        let proxies: Vec<String> = proxy_contents
             .lines()
             .map(|line| line.trim().to_string())
             .filter(|line| !line.is_empty())
             .collect();
+        Ok(proxies)
+    }
 
-        Ok(settings)
+    pub fn get_proxies_from_index(&self, start_index: usize, count: usize) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        let all_proxies = self.read_proxies()?;
+        if all_proxies.is_empty() {
+            return Ok(vec![]);
+        }
+        
+        let len = all_proxies.len();
+        let mut result = Vec::with_capacity(count.min(len));
+        
+        for i in 0..count.min(len) {
+            let idx = (start_index + i) % len;
+            result.push(all_proxies[idx].clone());
+        }
+        
+        Ok(result)
     }
 }
 

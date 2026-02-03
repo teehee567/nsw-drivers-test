@@ -51,6 +51,9 @@ cd nsw-drivers-test
 # Run Docker Compose
 docker-compose up -d
 
+# To delay the first background scrape (e.g., by 2 hours):
+INITIAL_DELAY_HOURS=2 docker-compose up -d
+
 ```
 
 ## Usage

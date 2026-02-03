@@ -150,6 +150,12 @@ impl BookingManager {
         tokio::spawn(async move {
             let update_interval = Duration::from_secs(settings.scrape_refresh_time_min * 60);
 
+            if settings.initial_delay_hours > 0.0 {
+                let delay_secs = (settings.initial_delay_hours * 3600.0) as u64;
+                info!("Delaying first background update by {} hours ({} seconds)", settings.initial_delay_hours, delay_secs);
+                tokio::time::sleep(Duration::from_secs(delay_secs)).await;
+            }
+
             while *running_status.read().unwrap() {
                 BookingManager::perform_update(locations.clone(), &file_path, settings.clone())
                     .await;
@@ -164,17 +170,25 @@ impl BookingManager {
         *running = false;
     }
 
-    pub async fn perform_update(locations: Vec<String>, file_path: &str, mut settings: Settings) {
+    pub async fn perform_update(locations: Vec<String>, file_path: &str, settings: Settings) {
         let start_time = Instant::now();
         let max_retries = settings.retries;
 
-        // rotate proxies
-        // trash simple probably change later (im not going ot)
-        if !settings.proxies.is_empty() {
-            let index = PROXY_ROTATION_INDEX.fetch_add(settings.parallel_browsers, AtomicOrdering::Relaxed);
-            let len = settings.proxies.len();
-            settings.proxies.rotate_left(index % len);
+        let proxy_index = PROXY_ROTATION_INDEX.fetch_add(settings.parallel_browsers, AtomicOrdering::Relaxed);
+        let proxies = match settings.get_proxies_from_index(proxy_index, settings.parallel_browsers) {
+            Ok(p) => p,
+            Err(e) => {
+                error!("Failed to read proxies from file: {}", e);
+                return;
+            }
+        };
+        
+        if proxies.is_empty() {
+            error!("No proxies available in proxy file");
+            return;
         }
+        
+        info!("Using proxies starting from index {}: {:?}", proxy_index, proxies);
 
         let mut final_results: HashMap<String, LocationBookings> = HashMap::new();
         let mut remaining_locations = locations.clone();
@@ -192,7 +206,7 @@ impl BookingManager {
                 remaining_locations.len()
             );
 
-            match super::rta::scrape_rta_timeslots(remaining_locations.clone(), &settings).await {
+            match super::rta::scrape_rta_timeslots(remaining_locations.clone(), &settings, proxies.clone()).await {
                 Ok(result_map) => {
                     info!(
                         "Successfully scraped {}/{} locations in attempt {}.",
