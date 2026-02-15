@@ -33,6 +33,22 @@ pub struct LocationDetailBookingResponse {
     pub etag: String,
 }
 
+#[server(name = GetAnnouncement, endpoint = "internalYW5ub3VuY2VtZW50")]
+pub async fn get_announcement() -> Result<Option<String>, ServerFnError> {
+    let path = "data/announcement.txt";
+    match tokio::fs::read_to_string(path).await {
+        Ok(content) => {
+            let trimmed = content.trim().to_string();
+            if trimmed.is_empty() {
+                Ok(None)
+            } else {
+                Ok(Some(trimmed))
+            }
+        }
+        Err(_) => Ok(None),
+    }
+}
+
 #[server(name = GetBookings, endpoint = "internalbWF5b2Zmbm9vbmdy")]
 pub async fn get_location_bookings(
     client_etag: String,
@@ -117,6 +133,20 @@ pub fn HomePage() -> impl IntoView {
 
     let (reset_sort_trigger, set_reset_sort_trigger) = create_signal(());
 
+    let (announcement, set_announcement) = create_signal::<Option<String>>(None);
+
+    let fetch_announcement = move || {
+        leptos::task::spawn_local(async move {
+            match get_announcement().await {
+                Ok(data) => set_announcement(data),
+                Err(_) => set_announcement(None),
+            }
+        });
+    };
+
+    #[cfg(not(feature = "ssr"))]
+    fetch_announcement();
+
     let location_manager = LocationManager::new();
 
     let fetch_bookings = move || {
@@ -153,6 +183,7 @@ pub fn HomePage() -> impl IntoView {
             move || {
                 leptos::logging::log!("Triggering refresh");
                 fetch_bookings();
+                fetch_announcement();
             },
             Duration::from_secs(600),
         )
@@ -238,6 +269,18 @@ pub fn HomePage() -> impl IntoView {
         ></script>
 
         <div class="max-w-4xl mx-auto p-4">
+            {move || {
+                match announcement.get() {
+                    Some(msg) => view! {
+                        <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded relative mb-4" role="alert">
+                            <strong class="font-bold">"📢 Announcement: "</strong>
+                            <span class="block sm:inline">{msg}</span>
+                        </div>
+                    }.into_any(),
+                    None => view! { <div class="hidden"></div> }.into_any(),
+                }
+            }}
+
             <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6" role="alert">
                 <strong class="font-bold">UP as of 29/01/2026: </strong>
                 <span class="block sm:inline">Currently up, refreshes every 4 hours, times will go down as i continue monitoring</span>
